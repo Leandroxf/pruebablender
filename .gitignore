@@ -1,0 +1,19 @@
+# pruebablender .gitignore
+
+# Outputs and logs
+/scripts/output/
+/docs/agent_logs/
+
+# Third-party large downloads
+/third_party/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Visual Studio
+.vs/
