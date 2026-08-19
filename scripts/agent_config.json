@@ -1,0 +1,17 @@
+{
+  "RepoRoot": "C:\\Users\\Leandro\\Desktop\\pruebablender",
+  "ExamplesDir": "C:\\Users\\Leandro\\Desktop\\pruebablender\\examples",
+  "MinMinutesBetweenRuns": 60,
+  "BlenderPaths": [
+    "C:\\Users\\Leandro\\Desktop\\pruebablender\\blender",
+    "C:\\Program Files\\Blender Foundation",
+    "C:\\Program Files (x86)\\Blender Foundation",
+    "C:\\Users\\Leandro\\AppData\\Local\\Programs"
+  ],
+  "DefaultResolution": 100,
+  "DefaultSamples": 32,
+  "UtilsRepoRaw": "https://raw.githubusercontent.com/yuki-koyama/blender-cli-rendering/master/utils.py",
+  "MaxConcurrency": 2,
+  "Retries": 3,
+  "LogRotateMB": 5
+}
