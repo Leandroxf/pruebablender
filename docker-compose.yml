@@ -1,0 +1,35 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - .:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_USER: todo_app
+      DB_PASSWORD: ${MYSQL_PASSWORD:-todo_local_app}
+      DB_NAME: proyectodetodo
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:10.11
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-todo_local_root}
+      MARIADB_DATABASE: proyectodetodo
+      MARIADB_USER: todo_app
+      MARIADB_PASSWORD: ${MYSQL_PASSWORD:-todo_local_app}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./libros.sql:/docker-entrypoint-initdb.d/001-libros.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p\"$${MARIADB_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  mariadb_data:
+    name: proyectodetodo_mariadb_data
