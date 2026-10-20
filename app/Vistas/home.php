@@ -3,19 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="rating-csrf-token" content="<?= htmlspecialchars($_SESSION['ratings_csrf'] ??= bin2hex(random_bytes(32)), ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="register-csrf-token" content="<?= htmlspecialchars($_SESSION['register_csrf'] ??= bin2hex(random_bytes(32)), ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="user-logged-in" content="<?= Auth::isLoggedIn() ? '1' : '0' ?>">
+    <meta name="purchases-csrf-token" content="<?= htmlspecialchars($_SESSION['purchases_csrf'] ??= bin2hex(random_bytes(32)), ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="user-id" content="<?= Auth::userId() !== null ? (int)Auth::userId() : '' ?>">
     <title>Audiolibrería de clásicos</title>
-    <link rel="stylesheet" href="style.css?v=spanish-classics-27">
-    <script src="main.js?v=spanish-classics-18" defer></script>
+    <link rel="stylesheet" href="style.css?v=spanish-classics-39">
+    <script src="main.js?v=spanish-classics-27" defer></script>
 </head>
 <body>
     <header class="header">
-        <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true): ?>
-            <a class="header__admin" href="admin.php">Administración</a>
-            <form class="header__logout" action="admin.php" method="post">
-                <input type="hidden" name="action" value="logout">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8') ?>">
-                <button class="admin-logout-button" type="submit">Salir del modo administrador</button>
-            </form>
+        <?php if (Auth::isAdmin()): ?>
+            <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de Administrador" title="Administrador">
+                <span class="user-card__avatar" aria-hidden="true">A</span>
+            </button>
+        <?php elseif (Auth::isUser()): ?>
+            <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de <?= htmlspecialchars(Auth::userName(), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(Auth::userName(), ENT_QUOTES, 'UTF-8') ?>">
+                <span class="user-card__avatar user-card__avatar--reader" aria-hidden="true"><?= htmlspecialchars(Auth::userInitial(), ENT_QUOTES, 'UTF-8') ?></span>
+            </button>
         <?php else: ?>
             <button class="button" type="button" data-modal-open="login-modal">Iniciar sesión</button>
             <button class="button" type="button" data-modal-open="register-modal">Crear cuenta</button>
@@ -24,12 +30,12 @@
     <main>
         <section class="intro">
             <div class="intro__content">
-                <p class="intro__eyebrow">32 clásicos · Texto íntegro · Inglés y español</p>
+                <p class="intro__eyebrow">31 clásicos · Texto íntegro · Inglés y español</p>
                 <h1 class="welcome-title">¡Bienvenido a nuestra audiolibrería!</h1>
-                <p class="intro__subtitle">Textos completos de clásicos en inglés y español. Leé en el navegador y escuchá con voz natural.</p>
+                <p class="intro__subtitle">Textos completos de clásicos en inglés y español. Leé, escuchá y valorá tus libros favoritos.</p>
                 <div class="intro__actions">
                     <a href="#catalog-title" class="intro__cta">Explorar colección →</a>
-                    <span class="intro__meta">32 títulos · 12 libros íntegros en español · lectura en voz alta</span>
+                    <span class="intro__meta">31 títulos · 12 libros íntegros en español · lectura en voz alta</span>
                 </div>
             </div>
             <div class="intro__art" aria-hidden="true">
@@ -43,7 +49,7 @@
             <div class="catalog__heading">
                 <p class="catalog__eyebrow">Explora la colección</p>
                 <h2 id="catalog-title">Historias que te acompañan</h2>
-                <p>Clásicos inolvidables para escuchar, descubrir y volver a disfrutar.</p>
+                <p>Clásicos inolvidables para escuchar, descubrir y volver a disfrutar. Valora tus favoritos con estrellas.</p>
             </div>
 
             <div class="catalog-layout">
@@ -53,6 +59,7 @@
                             Buscar libros
                             <input id="book-search" type="search" placeholder="Título, autor o género" aria-controls="book-grid">
                         </label>
+                        <button class="button catalog-tools__barcode" type="button" data-modal-open="barcode-modal">Buscar por código de barras</button>
                     </div>
                     <p class="catalog-results" id="book-results" aria-live="polite">Se muestran 32 libros</p>
 
@@ -172,15 +179,6 @@
                                 <h3>The Hound of the Baskervilles</h3>
                                 <p>Arthur Conan Doyle</p>
                                 <button class="book-read" type="button" data-reader-url="books/2852.html">Leer libro</button>
-                            </div>
-                        </article>
-                        <article class="book-card" data-genre="misterio">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/id/11100465-L.jpg" alt="Portada de Murder on the Orient Express" loading="lazy">
-                            <div class="book-card__info">
-                                <p class="book-card__genre">Misterio · Clásico</p>
-                                <h3>Murder on the Orient Express</h3>
-                                <p>Agatha Christie</p>
-                                <a class="book-read" href="https://openlibrary.org/works/OL471576W/Murder_on_the_Orient_Express" target="_blank" rel="noopener noreferrer">Consultar disponibilidad</a>
                             </div>
                         </article>
                         <article class="book-card" data-genre="poesia">
@@ -353,17 +351,9 @@
                     <h3 id="genre-title">Género</h3>
                     <div class="genre-filter-buttons" role="group" aria-labelledby="genre-title">
                         <button class="genre-filter-button" type="button" data-genre-filter="all" aria-pressed="true">Todos</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="romance" aria-pressed="false">Romance</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="ciencia-ficcion" aria-pressed="false">Ciencia ficción</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="terror" aria-pressed="false">Terror</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="fantasia" aria-pressed="false">Fantasía</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="aventura" aria-pressed="false">Aventura</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="novela" aria-pressed="false">Novela</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="misterio" aria-pressed="false">Misterio</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="poesia" aria-pressed="false">Poesía</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="historia" aria-pressed="false">Historia</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="filosofia" aria-pressed="false">Filosofía</button>
-                        <button class="genre-filter-button" type="button" data-genre-filter="cuentos" aria-pressed="false">Cuentos</button>
+                        <?php foreach (['romance' => 'Romance', 'ciencia-ficcion' => 'Ciencia ficción', 'terror' => 'Terror', 'fantasia' => 'Fantasía', 'aventura' => 'Aventura', 'novela' => 'Novela', 'misterio' => 'Misterio', 'poesia' => 'Poesía', 'historia' => 'Historia', 'filosofia' => 'Filosofía', 'cuentos' => 'Cuentos'] as $value => $label): ?>
+                            <button class="genre-filter-button" type="button" data-genre-filter="<?= $value ?>" aria-pressed="false"><?= $label ?></button>
+                        <?php endforeach; ?>
                     </div>
                     <div class="catalog-language-filter">
                         <h3 id="language-title">Idioma</h3>
@@ -405,6 +395,10 @@
             </div>
         </div>
         <p class="reader__status" id="reader-status" aria-live="polite">Cada libro se lee en su idioma original.</p>
+        <div class="reader__locked" id="reader-locked" hidden>
+            <p class="reader__locked-text" id="reader-locked-text"></p>
+            <button class="book-buy" type="button" id="reader-buy" hidden></button>
+        </div>
         <p class="reader__source" id="reader-source" hidden>
             Fuente: Project Gutenberg · <a id="reader-source-link" target="_blank" rel="noopener noreferrer">ver edición original y licencia</a>
         </p>
@@ -417,41 +411,118 @@
         </div>
     </dialog>
 
-    <dialog class="modal" id="login-modal" aria-labelledby="login-title">
+    <dialog class="modal profile-modal" id="profile-modal" aria-labelledby="profile-title">
+        <form method="dialog">
+            <button class="modal__close profile-modal__close" type="submit" aria-label="Cerrar perfil">&times;</button>
+        </form>
+        <?php if (Auth::isAdmin()): ?>
+            <div class="profile-banner profile-banner--admin">
+                <span class="profile-banner__avatar" aria-hidden="true">A</span>
+                <h2 id="profile-title">Administrador</h2>
+                <span class="user-card__badge">Admin</span>
+            </div>
+            <div class="profile-actions">
+                <a class="header__admin profile-actions__primary" href="admin.php">✎&nbsp; Entrar en Modo Editor</a>
+                <form class="header__logout" action="admin.php" method="post">
+                    <input type="hidden" name="action" value="logout">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                    <button class="admin-logout-button profile-actions__secondary" type="submit">Cerrar sesión</button>
+                </form>
+            </div>
+        <?php elseif (Auth::isUser()): ?>
+            <div class="auth-modal__banner auth-modal__banner--reader">
+                <span class="auth-modal__avatar auth-modal__avatar--initial" aria-hidden="true"><?= htmlspecialchars(Auth::userInitial(), ENT_QUOTES, 'UTF-8') ?></span>
+                <p class="auth-modal__eyebrow">Lector</p>
+                <h2 id="profile-title"><?= htmlspecialchars(Auth::userName(), ENT_QUOTES, 'UTF-8') ?></h2>
+                <p class="auth-modal__subtitle">Tu cuenta está activa. Podés explorar el catálogo y valorar tus libros favoritos.</p>
+            </div>
+            <div class="auth-profile__actions">
+                <form class="header__logout" action="admin.php" method="post">
+                    <input type="hidden" name="action" value="logout">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['user_csrf'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <button class="intro__cta auth-submit auth-submit--secondary" type="submit">Cerrar sesión</button>
+                </form>
+            </div>
+        <?php endif; ?>
+    </dialog>
+
+    <dialog class="modal" id="barcode-modal" aria-labelledby="barcode-title">
         <div class="modal__heading">
-            <h2 id="login-title">Iniciar sesión</h2>
+            <h2 id="barcode-title">Buscar por código de barras</h2>
             <form method="dialog">
-                <button class="modal__close" type="submit" aria-label="Cerrar inicio de sesión">&times;</button>
+                <button class="modal__close" type="submit" aria-label="Cerrar búsqueda por código">&times;</button>
             </form>
         </div>
-        <p>Ingresa tus datos para continuar.</p>
-        <form action="admin.php" method="post">
-            <input type="hidden" name="action" value="login">
-            <label for="login-username">Usuario</label>
-            <input id="login-username" name="username" type="text" autocomplete="username" required>
-            <label for="login-password">Contraseña</label>
-            <input id="login-password" name="password" type="password" autocomplete="current-password" required>
-            <button class="intro__cta admin-submit" type="submit">Entrar</button>
+        <p>Escribí o pegá el ISBN / código de barras del libro. Se busca solo en tu catálogo local (ID o ISBN de la portada).</p>
+        <form id="barcode-form">
+            <label for="barcode-input">ISBN o ID</label>
+            <input id="barcode-input" name="barcode" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej: 9780141439518 o 1342" required>
+            <p id="barcode-status" class="admin-help" aria-live="polite"></p>
+            <button class="intro__cta admin-submit" type="submit">Buscar en mi catálogo</button>
         </form>
     </dialog>
 
-    <dialog class="modal" id="register-modal" aria-labelledby="register-title">
-        <div class="modal__heading">
-            <h2 id="register-title">Crear cuenta</h2>
+    <dialog class="modal auth-modal" id="login-modal" aria-labelledby="login-title">
+        <div class="auth-modal__banner">
             <form method="dialog">
-                <button class="modal__close" type="submit" aria-label="Cerrar registro">&times;</button>
+                <button class="modal__close auth-modal__close" type="submit" aria-label="Cerrar inicio de sesión">&times;</button>
             </form>
+            <span class="auth-modal__avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M12 6.5C10.5 5 8.2 4.2 5 4.5v13c3.2-.3 5.5.5 7 2 1.5-1.5 3.8-2.3 7-2v-13c-3.2-.3-5.5.5-7 2Z"/>
+                    <path d="M12 6.5v13"/>
+                </svg>
+            </span>
+            <p class="auth-modal__eyebrow">Tu biblioteca</p>
+            <h2 id="login-title">Bienvenido de nuevo</h2>
+            <p class="auth-modal__subtitle">Ingresá con tu usuario o correo.</p>
         </div>
-        <p>Crea una cuenta nueva.</p>
-        <form id="register-form">
-            <label for="register-name">Nombre</label>
-            <input id="register-name" name="name" type="text" autocomplete="name" required>
-            <label for="register-email">Correo electrónico</label>
-            <input id="register-email" name="email" type="email" autocomplete="email" required>
-            <label for="register-password">Contraseña</label>
-            <input id="register-password" name="password" type="password" autocomplete="new-password" required>
+        <form class="auth-form" action="admin.php" method="post">
+            <input type="hidden" name="action" value="login">
+            <label class="auth-field" for="login-username">
+                <span>Usuario o mail</span>
+                <input id="login-username" name="username" type="text" autocomplete="username" placeholder="tu@correo.com" required>
+            </label>
+            <label class="auth-field" for="login-password">
+                <span>Contraseña</span>
+                <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+            </label>
+            <button class="intro__cta auth-submit" type="submit">Entrar</button>
+            <p class="auth-switch">¿No tenés cuenta? <button class="auth-switch__link" type="button" data-modal-open="register-modal">Crear una</button></p>
+        </form>
+    </dialog>
+
+    <dialog class="modal auth-modal" id="register-modal" aria-labelledby="register-title">
+        <div class="auth-modal__banner">
+            <form method="dialog">
+                <button class="modal__close auth-modal__close" type="submit" aria-label="Cerrar registro">&times;</button>
+            </form>
+            <span class="auth-modal__avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M12 6.5C10.5 5 8.2 4.2 5 4.5v13c3.2-.3 5.5.5 7 2 1.5-1.5 3.8-2.3 7-2v-13c-3.2-.3-5.5.5-7 2Z"/>
+                    <path d="M12 6.5v13"/>
+                </svg>
+            </span>
+            <p class="auth-modal__eyebrow">Sumate a la biblioteca</p>
+            <h2 id="register-title">Creá tu cuenta</h2>
+            <p class="auth-modal__subtitle">Guardá tus lecturas y valoraciones en un solo lugar.</p>
+        </div>
+        <form class="auth-form" id="register-form">
+            <label class="auth-field" for="register-name">
+                <span>Nombre</span>
+                <input id="register-name" name="name" type="text" autocomplete="name" placeholder="Tu nombre" required>
+            </label>
+            <label class="auth-field" for="register-email">
+                <span>Correo electrónico</span>
+                <input id="register-email" name="email" type="email" autocomplete="email" placeholder="tu@correo.com" required>
+            </label>
+            <label class="auth-field" for="register-password">
+                <span>Contraseña</span>
+                <input id="register-password" name="password" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" minlength="8" maxlength="72" required>
+            </label>
             <p id="register-status" class="admin-help" aria-live="polite"></p>
-            <button class="intro__cta admin-submit" type="submit">Crear cuenta</button>
+            <button class="intro__cta auth-submit" type="submit">Crear cuenta</button>
+            <p class="auth-switch">¿Ya tenés cuenta? <button class="auth-switch__link" type="button" data-modal-open="login-modal">Iniciar sesión</button></p>
         </form>
     </dialog>
 </body>

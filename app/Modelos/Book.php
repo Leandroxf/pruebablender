@@ -4,10 +4,23 @@ class Book
 {
     private static array $booksByLanguage = [];
 
-    public function findById(int $id, string $language = 'en'): ?array
+    private PaidBook $paidBooks;
+
+    public function __construct(?PaidBook $paidBooks = null)
     {
-        if (!in_array($language, ['en', 'es'], true)) {
+        $this->paidBooks = $paidBooks ?? new PaidBook();
+    }
+
+    public function findById(int $id, string $language = Lang::EN): ?array
+    {
+        if (!Lang::isValid($language)) {
             return null;
+        }
+
+        // Los libros de pago no estan en el JSON publico: su texto vive en MySQL.
+        $paid = $this->paidBooks->findFull($id, $language);
+        if ($paid !== null) {
+            return $paid;
         }
 
         $books = $this->loadLanguage($language);
@@ -16,25 +29,22 @@ class Book
             return null;
         }
 
-        foreach ($book['secciones'] as &$section) {
+        foreach ($book['secciones'] ?? [] as &$section) {
             if (!is_array($section)) {
                 continue;
             }
-            if (isset($section['title']) && is_string($section['title'])) {
+            if (is_string($section['title'] ?? null)) {
                 $section['title'] = $this->repairLegacyEncoding($section['title']);
             }
-            if (!isset($section['blocks']) || !is_array($section['blocks'])) {
-                continue;
-            }
-            foreach ($section['blocks'] as &$block) {
-                if (isset($block['text']) && is_string($block['text'])) {
+            foreach ($section['blocks'] ?? [] as &$block) {
+                if (is_array($block) && is_string($block['text'] ?? null)) {
                     $block['text'] = $this->repairLegacyEncoding($block['text']);
                 }
             }
             unset($block);
         }
         unset($section);
-        if ($language === 'en' && isset($book['secciones'][0]) && is_array($book['secciones'][0])) {
+        if ($language === 'en' && is_array($book['secciones'][0] ?? null)) {
             $book['secciones'][0]['title'] = 'Introduction';
         }
 
@@ -47,22 +57,8 @@ class Book
             return self::$booksByLanguage[$language];
         }
 
-        $filename = $language === 'es' ? 'libros_es.json' : 'libros.json';
-        $path = PROJECT_ROOT . '/api/' . $filename;
-        $contents = file_get_contents($path);
-        if ($contents === false) {
-            throw new RuntimeException('No se pudo leer el archivo de libros: ' . $filename);
-        }
-
-        try {
-            $books = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $error) {
-            throw new RuntimeException('El archivo de libros no contiene JSON válido: ' . $filename, 0, $error);
-        }
-
-        if (!is_array($books)) {
-            throw new RuntimeException('El archivo de libros tiene un formato inválido: ' . $filename);
-        }
+        $filename = Lang::file($language);
+        $books = CatalogStore::read($language, "de libros: $filename");
 
         foreach ($books as $id => $book) {
             if (
@@ -126,7 +122,11 @@ class Book
     public function getCatalogSummary(): array
     {
         $books = [];
-        foreach (['en', 'es'] as $language) {
+        foreach (Lang::all() as $language) {
+            // Los libros de pago se listan desde MySQL (su texto no esta en el JSON).
+            foreach ($this->paidBooks->listPaidBooks($language) as $book) {
+                $books[] = $book;
+            }
             foreach ($this->loadLanguage($language) as $book) {
                 $books[] = [
                     'id' => (string)$book['id'],
@@ -135,6 +135,8 @@ class Book
                     'genero' => $book['genero'],
                     'cover' => $book['cover'],
                     'idioma' => $book['idioma'],
+                    'isbn' => (string)($book['isbn'] ?? ''),
+                    'precio' => isset($book['precio']) ? (float)$book['precio'] : null,
                     'bytes' => strlen(json_encode($book['secciones'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)),
                     'num_secciones' => count($book['secciones']),
                 ];

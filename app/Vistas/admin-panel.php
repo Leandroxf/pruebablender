@@ -1,3 +1,9 @@
+<?php
+$section ??= 'home';
+$message ??= null;
+$success ??= false;
+$books ??= [];
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -10,7 +16,7 @@
     <main class="admin-card admin-card--wide">
         <header class="admin-header">
             <div>
-                <p class="catalog__eyebrow">Panel de administrador</p>
+                <p class="catalog__eyebrow">Modo Editor · Panel de administrador</p>
                 <h1><?= $section === 'add' ? 'Agregar un libro' : ($section === 'manage' ? 'Administrar libros' : 'Administración') ?></h1>
             </div>
             <?php if ($section === 'home'): ?>

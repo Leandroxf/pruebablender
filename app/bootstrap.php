@@ -4,8 +4,8 @@ define('PROJECT_ROOT', dirname(__DIR__));
 
 spl_autoload_register(static function (string $class): void {
     $directories = [
-        PROJECT_ROOT . '/app/controllers/',
-        PROJECT_ROOT . '/app/models/',
+        PROJECT_ROOT . '/app/Controladores/',
+        PROJECT_ROOT . '/app/Modelos/',
     ];
 
     foreach ($directories as $directory) {

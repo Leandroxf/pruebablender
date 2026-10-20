@@ -1,3 +1,4 @@
+<?php $error ??= null; ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

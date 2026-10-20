@@ -1,0 +1,18 @@
+# Archivos que nunca deben servirse desde el navegador.
+# El volcado bdsql/libros.sql contiene el texto completo de los libros de pago.
+
+# Bloquear volcados SQL y otros archivos de base de datos
+<FilesMatch "\.(sql|dump|bak|old|sqlite|db)$">
+    Require all denied
+</FilesMatch>
+
+# Bloquear el historial de Git
+RedirectMatch 404 /\.git(/|$)
+
+# Ocultar archivos ocultos (.env, .git, etc.)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Evitar que se listen los directorios
+Options -Indexes

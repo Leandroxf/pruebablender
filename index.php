@@ -15,19 +15,20 @@ header('Expires: 0');
 
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $projectPath = '/' . preg_quote(basename(PROJECT_ROOT), '#');
-$requestPath = preg_replace('#^' . $projectPath . '(?=/|$)#i', '', $requestPath);
-$route = trim($requestPath, '/');
+$route = trim((string)preg_replace('#^' . $projectPath . '(?=/|$)#i', '', $requestPath), '/');
+
+$router = (new Router())
+    ->add('', static function (): void { (new HomeController())->index(); })
+    ->add('index.php', static function (): void { (new HomeController())->index(); })
+    ->add('admin.php', static function (): void { (new AdminController())->handle(); })
+    ->add('api/libro.php', static function (): void { (new BookController())->show(); })
+    ->add('api/lista.php', static function (): void { (new CatalogController())->index(); })
+    ->add('api/valoraciones.php', static function (): void { (new RatingController())->handle(); })
+    ->add('api/registro.php', static function (): void { (new AuthController())->register(); })
+    ->add('api/compra.php', static function (): void { (new PurchaseController())->handle(); });
 
 try {
-    if ($route === '' || $route === 'index.php') {
-        (new HomeController())->index();
-    } elseif ($route === 'admin.php') {
-        (new AdminController())->handle();
-    } elseif ($route === 'api/libro.php') {
-        (new BookController())->show();
-    } elseif ($route === 'api/lista.php') {
-        (new CatalogController())->index();
-    } else {
+    $router->dispatch($route, static function () use ($route): void {
         http_response_code(404);
         if (str_starts_with($route, 'api/')) {
             header('Content-Type: application/json; charset=utf-8');
@@ -35,7 +36,7 @@ try {
         } else {
             echo 'Página no encontrada';
         }
-    }
+    });
 } catch (Throwable $error) {
     error_log($error->getMessage());
     http_response_code(500);
