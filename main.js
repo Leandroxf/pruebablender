@@ -124,7 +124,46 @@ function filterBooks() {
 	if (emptyMessage) emptyMessage.hidden = visibleCount > 0;
 }
 
-searchInput?.addEventListener("input", filterBooks);
+const barcodeSerialButton = $("#barcode-serial-button");
+const barcodeSerialStatus = $("#barcode-serial-status");
+let barcodeSerialPort = null;
+
+barcodeSerialButton?.addEventListener("click", async () => {
+	if (!("serial" in navigator)) {
+		if (barcodeSerialStatus) barcodeSerialStatus.textContent = "Este navegador no permite Web Serial. Usa Chrome o Edge en localhost.";
+		return;
+	}
+
+	try {
+		barcodeSerialStatus.textContent = "Seleccioná el lector serie cuando aparezca la ventana del navegador…";
+		barcodeSerialPort = await navigator.serial.requestPort();
+		await barcodeSerialPort.open({ baudRate: 9600 });
+		barcodeSerialStatus.textContent = "Lector conectado. Escaneá el ISBN…";
+		const decoder = new TextDecoderStream();
+		barcodeSerialPort.readable.pipeTo(decoder.writable);
+		const reader = decoder.readable.getReader();
+		let buffer = "";
+		while (true) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			buffer += value || "";
+			const lines = buffer.split(/\r?\n/);
+			buffer = lines.pop() || "";
+			for (const line of lines) {
+				const isbn = line.replace(/[^0-9Xx]/g, "");
+				if (isbn) {
+					$("#barcode-input").value = isbn;
+					barcodeSerialStatus.textContent = `ISBN recibido: ${isbn}`;
+					$("#barcode-form")?.requestSubmit();
+				}
+			}
+		}
+	} catch (error) {
+		console.error("Error del lector serie:", error);
+		if (barcodeSerialStatus) barcodeSerialStatus.textContent = "No se pudo conectar el lector. Verificá que esté disponible.";
+	}
+});
+
 $("#barcode-form")?.addEventListener("submit", (event) => {
 	event.preventDefault();
 	const input = $("#barcode-input");
@@ -189,14 +228,15 @@ const pendingRatingKeys = new Set();
 function getBookRatingKey(card) {
 	const language = card.dataset.language === "es" ? "es" : "en";
 	const readerUrl = card.querySelector("[data-reader-url]")?.dataset.readerUrl || "";
+	const rawId = card.dataset.bookId || readerUrl.match(/(\d+)\.html$/)?.[1] || "";
 	const title = card.querySelector("h3")?.textContent.trim() || "Libro";
-	const id = readerUrl.match(/(\d+)\.html$/)?.[1] || normalizeText(title).replace(/[^a-z0-9]+/g, "-");
+	const id = rawId || normalizeText(title).replace(/[^a-z0-9]+/g, "-");
 	return `${language}:${id}`;
 }
 
 function addBookRatingControls(card) {
 	const info = card.querySelector(".book-card__info");
-	if (!info || !card.querySelector("[data-reader-url]") || info.querySelector(".book-rating-controls")) return;
+	if (!info || (!card.querySelector("[data-reader-url]") && !card.dataset.bookId) || info.querySelector(".book-rating-controls")) return;
 
 	const bookKey = getBookRatingKey(card);
 	card.dataset.bookKey = bookKey;
@@ -267,7 +307,7 @@ function updateBookRatingControls(bookKey, summary = ratings.get(bookKey)) {
 			const value = Number(star.dataset.rating);
 			star.setAttribute("aria-pressed", String(savedRating === value));
 			star.dataset.active = String(value <= savedRating);
-			star.disabled = pendingRatingKeys.has(bookKey);
+			star.disabled = !isLoggedIn || pendingRatingKeys.has(bookKey);
 		});
 	});
 }
@@ -447,15 +487,39 @@ function refreshPaidCard(card, bookId, language) {
 	const badge = card.querySelector(".book-card__owned-badge");
 
 	if (buyButton) {
-		buyButton.hidden = owned;
-		buyButton.disabled = false;
+		if (owned) {
+			if (card.dataset.presentation === "1") {
+				buyButton.className = "book-read";
+				buyButton.removeAttribute("data-purchase-action");
+				buyButton.removeAttribute("data-book-price");
+				buyButton.dataset.readerUrl = `books/${bookId}.html`;
+				buyButton.textContent = "Leer libro";
+				buyButton.hidden = false;
+			} else {
+				buyButton.className = "book-read";
+				buyButton.removeAttribute("data-purchase-action");
+				buyButton.removeAttribute("data-book-price");
+				buyButton.dataset.readerUrl = `books/${bookId}.html`;
+				buyButton.textContent = "Leer libro";
+				buyButton.hidden = false;
+			}
+		} else {
+			buyButton.hidden = false;
+			buyButton.disabled = false;
+		}
 	}
 	if (badge) {
-		badge.hidden = !owned;
+		if (!userLoggedIn) {
+			badge.remove();
+		} else {
+			badge.hidden = !owned;
+		}
 	}
-	if (readButton && card.dataset.requiresPurchase === "1") {
+	if (readButton && card.dataset.requiresPurchase === "1" && card.dataset.presentation !== "1") {
 		readButton.hidden = !owned;
 		readButton.textContent = "Leer libro";
+	} else if (readButton && card.dataset.presentation === "1") {
+		readButton.hidden = true;
 	}
 }
 
@@ -469,8 +533,7 @@ async function buyBook(bookId, language, price, button) {
 	}
 
 	button.disabled = true;
-	const previousLabel = button.textContent;
-	button.textContent = "Procesando…";
+	button.textContent = "Comprar libro";
 
 	try {
 		const response = await fetch(purchaseEndpoint, {
@@ -493,7 +556,7 @@ async function buyBook(bookId, language, price, button) {
 		});
 
 		bookCards.forEach((card) => {
-			const id = card.querySelector("[data-reader-url]")?.dataset.readerUrl.match(/(\d+)\.html$/)?.[1];
+			const id = card.dataset.bookId || card.querySelector("[data-reader-url]")?.dataset.readerUrl.match(/(\d+)\.html$/)?.[1];
 			if (id) refreshPaidCard(card, id, card.dataset.language === "es" ? "es" : "en");
 		});
 
@@ -504,7 +567,7 @@ async function buyBook(bookId, language, price, button) {
 		console.error("Error al comprar el libro:", error);
 		showToast(error.message || "No se pudo completar la compra.", "error");
 		button.disabled = false;
-		button.textContent = previousLabel;
+		button.textContent = "Comprar libro";
 	}
 }
 
@@ -565,6 +628,7 @@ async function loadAdditionalCatalogBooks() {
 		card.className = "book-card";
 		card.dataset.genre = book.genero || "";
 		card.dataset.language = language;
+		card.dataset.bookId = String(book.id);
 		card.dataset.isbn = book.isbn || "";
 
 		const cover = document.createElement("img");
@@ -598,12 +662,13 @@ async function loadAdditionalCatalogBooks() {
 		}
 
 		if (isPaid) {
-			card.dataset.requiresPurchase = "1";
+		card.dataset.requiresPurchase = "1";
+		if (book.presentacion) card.dataset.presentation = "1";
 
 			const ownedBadge = document.createElement("span");
 			ownedBadge.className = "book-card__owned-badge";
 			ownedBadge.textContent = "Comprado";
-			ownedBadge.hidden = true;
+			ownedBadge.hidden = !isLoggedIn;
 			info.append(ownedBadge);
 
 			const buyButton = document.createElement("button");
@@ -617,16 +682,18 @@ async function loadAdditionalCatalogBooks() {
 			info.append(buyButton);
 		}
 
-		info.append(readButton);
+		if (!book.presentacion) {
+			info.append(readButton);
+		}
 		card.append(cover, info);
+		catalog.querySelector(".book-grid")?.append(card);
+		bookCards.push(card);
+		existingBooks.add(key);
 
 		if (isPaid) {
 			refreshPaidCard(card, book.id, language);
 		}
 		addBookRatingControls(card);
-		catalog.querySelector(".book-grid")?.append(card);
-		bookCards.push(card);
-		existingBooks.add(key);
 	});
 
 	const spanishBooks = books.filter((book) => book.idioma === "es").length;

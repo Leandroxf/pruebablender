@@ -1,4 +1,9 @@
-<?php $error ??= null; ?>
+<?php
+
+// Pantalla de ingreso del panel de administración.
+
+$error = $error ?? null;
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -13,9 +18,9 @@
         <p class="catalog__eyebrow">Acceso restringido</p>
         <h1>Administración</h1>
         <p>Paso 1 de 2 · Ingresa para gestionar el catálogo de libros.</p>
-        <?php if ($error !== null): ?>
-            <p class="admin-message admin-message--error" role="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
-        <?php endif; ?>
+        <?php if ($error !== null) { ?>
+            <p class="admin-message admin-message--error" role="alert"><?= htmlspecialchars((string) $error, ENT_QUOTES, 'UTF-8') ?></p>
+        <?php } ?>
         <form action="admin.php" method="post">
             <input type="hidden" name="action" value="login">
             <label for="admin-username">Usuario</label>

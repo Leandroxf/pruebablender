@@ -1,18 +1,22 @@
 <?php
 
+// Todo el proyecto se carga desde acá: funciones + sesión.
+
 define('PROJECT_ROOT', dirname(__DIR__));
 
-spl_autoload_register(static function (string $class): void {
-    $directories = [
-        PROJECT_ROOT . '/app/Controladores/',
-        PROJECT_ROOT . '/app/Modelos/',
-    ];
+require_once __DIR__ . '/funciones/general.php';
+require_once __DIR__ . '/funciones/db.php';
+require_once __DIR__ . '/funciones/modelo.php';
+require_once __DIR__ . '/funciones/sesion.php';
+require_once __DIR__ . '/funciones/usuarios.php';
+require_once __DIR__ . '/funciones/libros.php';
+require_once __DIR__ . '/funciones/compras.php';
+require_once __DIR__ . '/funciones/valoraciones.php';
 
-    foreach ($directories as $directory) {
-        $file = $directory . $class . '.php';
-        if (is_file($file)) {
-            require_once $file;
-            return;
-        }
-    }
-});
+// Sesión de PHP
+$sesion = new Sesion();
+
+// Navegador siempre debe pedir la página de nuevo
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');

@@ -583,7 +583,8 @@ dialog.modal.profile-modal{
     font-size: 1.05rem;
     font-weight: 700;
 }
-.book-read{
+.book-read,
+.book-buy{
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -600,30 +601,14 @@ dialog.modal.profile-modal{
     cursor: pointer;
     text-decoration: none;
 }
-.book-read:hover{
+.book-read:hover,
+.book-buy:hover{
     border-color: #0f766e;
+    color: #0f766e;
     background: #e7eee9;
 }
-/* --- Libros de pago: boton de compra, insignia de comprado y aviso del lector --- */
 .book-buy{
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    align-self: flex-start;
-    margin-top: 0.55rem;
-    padding: 0.45rem 0.7rem;
-    border: 1px solid #0f766e;
-    border-radius: 4px;
-    color: #fff;
-    background: #0f766e;
-    font-family: inherit;
-    font-size: 0.875rem;
-    font-weight: 700;
-    cursor: pointer;
-}
-.book-buy:hover{
-    background: #0b5d57;
-    border-color: #0b5d57;
+    margin-top: 0.9rem;
 }
 .book-buy:focus-visible{
     outline: 3px solid rgb(15 118 110 / 25%);
@@ -646,9 +631,14 @@ dialog.modal.profile-modal{
     font-weight: 700;
 }
 .book-card--owned .book-read{
+    border-color: #b9c3bd;
+    color: #0f766e;
+    background: #fff;
+}
+.book-card--owned .book-read:hover{
     border-color: #0f766e;
-    color: #fff;
-    background: #0f766e;
+    color: #0f766e;
+    background: #e7eee9;
 }
 .reader__locked{
     display: flex;

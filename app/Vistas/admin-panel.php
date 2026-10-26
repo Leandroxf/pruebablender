@@ -1,8 +1,19 @@
 <?php
-$section ??= 'home';
-$message ??= null;
-$success ??= false;
-$books ??= [];
+
+// Panel de administración: inicio, agregar libros y administrar el catálogo.
+
+$section = $section ?? 'home';
+$message = $message ?? null;
+$success = $success ?? false;
+$books = $books ?? array();
+
+$titulos = array('add' => 'Agregar un libro', 'manage' => 'Administrar libros');
+$titulo = $titulos[$section] ?? 'Administración';
+
+$claseMensaje = 'admin-message--error';
+if ($success) {
+    $claseMensaje = 'admin-message--success';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -17,22 +28,19 @@ $books ??= [];
         <header class="admin-header">
             <div>
                 <p class="catalog__eyebrow">Modo Editor · Panel de administrador</p>
-                <h1><?= $section === 'add' ? 'Agregar un libro' : ($section === 'manage' ? 'Administrar libros' : 'Administración') ?></h1>
+                <h1><?= $titulo ?></h1>
             </div>
-            <?php if ($section === 'home'): ?>
-                <form action="admin.php" method="post">
-                    <input type="hidden" name="action" value="logout">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8') ?>">
-                    <button class="admin-logout-button" type="submit">Salir del modo administrador</button>
-                </form>
-            <?php else: ?>
+            <?php if ($section === 'home') { ?>
+                <a class="admin-logout-button" href="./">Volver al inicio</a>
+            <?php } ?>
+            <?php if ($section !== 'home') { ?>
                 <a class="intro__cta admin-back-button" href="admin.php">Volver</a>
-            <?php endif; ?>
+            <?php } ?>
         </header>
-        <?php if ($message !== null): ?>
-            <p class="admin-message <?= $success ? 'admin-message--success' : 'admin-message--error' ?>" role="status"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></p>
-        <?php endif; ?>
-        <?php if ($section === 'home'): ?>
+        <?php if ($message !== null) { ?>
+            <p class="admin-message <?= $claseMensaje ?>" role="status"><?= htmlspecialchars((string) $message, ENT_QUOTES, 'UTF-8') ?></p>
+        <?php } ?>
+        <?php if ($section === 'home') { ?>
             <section class="admin-dashboard" aria-label="Opciones de administración">
                 <a class="admin-action-card" href="admin.php?section=add">
                     <span class="admin-action-icon" aria-hidden="true">＋</span>
@@ -51,35 +59,41 @@ $books ??= [];
                     <span class="admin-action-arrow" aria-hidden="true">→</span>
                 </a>
             </section>
-        <?php elseif ($section === 'manage'): ?>
+        <?php } ?>
+        <?php if ($section === 'manage') { ?>
             <section class="admin-catalog" aria-labelledby="admin-catalog-title">
                 <h2 id="admin-catalog-title">Libros en el catálogo (<?= count($books) ?>)</h2>
-                <?php if ($books === []): ?>
+                <?php if (count($books) === 0) { ?>
                     <p class="admin-help">Todavía no hay libros en el catálogo.</p>
-                <?php else: ?>
+                <?php } else { ?>
                     <ul class="admin-book-list">
-                        <?php foreach ($books as $book): ?>
+                        <?php foreach ($books as $book) { ?>
+                            <?php
+                            $nombreIdioma = 'Inglés';
+                            if ($book['idioma'] === 'es') {
+                                $nombreIdioma = 'Español';
+                            }
+                            ?>
                             <li class="admin-book-item">
                                 <div class="admin-book-details">
-                                    <strong><?= htmlspecialchars($book['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                    <span><?= htmlspecialchars($book['autor'], ENT_QUOTES, 'UTF-8') ?> · <?= $book['idioma'] === 'es' ? 'Español' : 'Inglés' ?> · ID <?= (int)$book['id'] ?></span>
+                                    <strong><?= htmlspecialchars((string) $book['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <span><?= htmlspecialchars((string) $book['autor'], ENT_QUOTES, 'UTF-8') ?> · <?= $nombreIdioma ?> · ID <?= (int) $book['id'] ?></span>
                                 </div>
                                 <form action="admin.php?section=manage" method="post" onsubmit="return confirm('¿Eliminar este libro del catálogo? Esta acción no se puede deshacer.');">
                                     <input type="hidden" name="action" value="delete-book">
-                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8') ?>">
-                                    <input type="hidden" name="id" value="<?= (int)$book['id'] ?>">
-                                    <input type="hidden" name="language" value="<?= htmlspecialchars($book['idioma'], ENT_QUOTES, 'UTF-8') ?>">
-                                    <button class="admin-delete" type="submit" aria-label="Eliminar <?= htmlspecialchars($book['titulo'], ENT_QUOTES, 'UTF-8') ?>">Eliminar</button>
+                                    <input type="hidden" name="id" value="<?= (int) $book['id'] ?>">
+                                    <input type="hidden" name="language" value="<?= htmlspecialchars((string) $book['idioma'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <button class="admin-delete" type="submit" aria-label="Eliminar <?= htmlspecialchars((string) $book['titulo'], ENT_QUOTES, 'UTF-8') ?>">Eliminar</button>
                                 </form>
                             </li>
-                        <?php endforeach; ?>
+                        <?php } ?>
                     </ul>
-                <?php endif; ?>
+                <?php } ?>
             </section>
-        <?php else: ?>
+        <?php } ?>
+        <?php if ($section === 'add') { ?>
             <form action="admin.php" method="post" class="admin-book-form">
                 <input type="hidden" name="action" value="add-book">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8') ?>">
                 <label for="book-text">Texto completo
                     <textarea id="book-text" name="text" rows="16" maxlength="5000000" placeholder="Pega aquí el texto completo. Separa los párrafos con una línea en blanco." required></textarea>
                 </label>
@@ -124,7 +138,7 @@ $books ??= [];
                 </div>
                 <button class="intro__cta admin-submit" type="submit">Guardar libro</button>
             </form>
-        <?php endif; ?>
+        <?php } ?>
     </main>
 </body>
 </html>

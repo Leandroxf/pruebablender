@@ -2,48 +2,43 @@
 
 require_once __DIR__ . '/app/bootstrap.php';
 
-session_set_cookie_params([
-    'httponly' => true,
-    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-    'samesite' => 'Lax',
-]);
-session_start();
+$ruta = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$ruta = ltrim($ruta, '/');
+$carpeta = basename(PROJECT_ROOT);
+if (strpos($ruta, $carpeta . '/') === 0) {
+    $ruta = substr($ruta, strlen($carpeta) + 1);
+}
 
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Pragma: no-cache');
-header('Expires: 0');
-
-$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-$projectPath = '/' . preg_quote(basename(PROJECT_ROOT), '#');
-$route = trim((string)preg_replace('#^' . $projectPath . '(?=/|$)#i', '', $requestPath), '/');
-
-$router = (new Router())
-    ->add('', static function (): void { (new HomeController())->index(); })
-    ->add('index.php', static function (): void { (new HomeController())->index(); })
-    ->add('admin.php', static function (): void { (new AdminController())->handle(); })
-    ->add('api/libro.php', static function (): void { (new BookController())->show(); })
-    ->add('api/lista.php', static function (): void { (new CatalogController())->index(); })
-    ->add('api/valoraciones.php', static function (): void { (new RatingController())->handle(); })
-    ->add('api/registro.php', static function (): void { (new AuthController())->register(); })
-    ->add('api/compra.php', static function (): void { (new PurchaseController())->handle(); });
+$esApi = strpos($ruta, 'api/') === 0;
 
 try {
-    $router->dispatch($route, static function () use ($route): void {
-        http_response_code(404);
-        if (str_starts_with($route, 'api/')) {
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['error' => 'Ruta no encontrada'], JSON_UNESCAPED_UNICODE);
-        } else {
-            echo 'Página no encontrada';
-        }
-    });
-} catch (Throwable $error) {
-    error_log($error->getMessage());
-    http_response_code(500);
-    if (str_starts_with($route, 'api/')) {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error' => 'Ocurrió un error al procesar la solicitud.'], JSON_UNESCAPED_UNICODE);
+    if ($ruta === '' || $ruta === 'index.php') {
+        require PROJECT_ROOT . '/app/Vistas/home.php';
+    } elseif ($ruta === 'admin.php') {
+        require PROJECT_ROOT . '/app/Controladores/admin.php';
+    } elseif ($ruta === 'api/libro.php') {
+        require PROJECT_ROOT . '/app/Controladores/libro.php';
+    } elseif ($ruta === 'api/lista.php') {
+        Respuesta::json((new Libro())->resumen());
+    } elseif ($ruta === 'api/valoraciones.php') {
+        require PROJECT_ROOT . '/app/Controladores/valoraciones.php';
+    } elseif ($ruta === 'api/registro.php') {
+        require PROJECT_ROOT . '/app/Controladores/registro.php';
+    } elseif ($ruta === 'api/compra.php') {
+        require PROJECT_ROOT . '/app/Controladores/compra.php';
+    } elseif ($esApi) {
+        Respuesta::json(array('error' => 'Ruta no encontrada'), 404);
     } else {
-        echo 'Ocurrió un error al cargar la página.';
+        http_response_code(404);
+        echo 'Página no encontrada';
     }
+} catch (InvalidArgumentException $error) {
+    Respuesta::json(array('error' => $error->getMessage()), 400);
+} catch (Exception $error) {
+    error_log($error->getMessage());
+    if ($esApi) {
+        Respuesta::json(array('error' => 'Ocurrió un error al procesar la solicitud.'), 500);
+    }
+    http_response_code(500);
+    echo 'Ocurrió un error al cargar la página.';
 }

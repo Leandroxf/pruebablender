@@ -1,31 +1,42 @@
+<?php
+$logueado = '0';
+if ($sesion->haySesion()) {
+    $logueado = '1';
+}
+$idUsuario = '';
+if ($sesion->usuarioId() !== null) {
+    $idUsuario = (int) $sesion->usuarioId();
+}
+$nombreUsuario = htmlspecialchars((string) $sesion->usuarioNombre(), ENT_QUOTES, 'UTF-8');
+$inicialUsuario = htmlspecialchars((string) $sesion->usuarioInicial(), ENT_QUOTES, 'UTF-8');
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="rating-csrf-token" content="<?= htmlspecialchars($_SESSION['ratings_csrf'] ??= bin2hex(random_bytes(32)), ENT_QUOTES, 'UTF-8') ?>">
-    <meta name="register-csrf-token" content="<?= htmlspecialchars($_SESSION['register_csrf'] ??= bin2hex(random_bytes(32)), ENT_QUOTES, 'UTF-8') ?>">
-    <meta name="user-logged-in" content="<?= Auth::isLoggedIn() ? '1' : '0' ?>">
-    <meta name="purchases-csrf-token" content="<?= htmlspecialchars($_SESSION['purchases_csrf'] ??= bin2hex(random_bytes(32)), ENT_QUOTES, 'UTF-8') ?>">
-    <meta name="user-id" content="<?= Auth::userId() !== null ? (int)Auth::userId() : '' ?>">
+    <meta name="user-logged-in" content="<?= $logueado ?>">
+    <meta name="user-id" content="<?= $idUsuario ?>">
     <title>Audiolibrería de clásicos</title>
-    <link rel="stylesheet" href="style.css?v=spanish-classics-39">
-    <script src="main.js?v=spanish-classics-27" defer></script>
+    <link rel="stylesheet" href="style.css?v=spanish-classics-42">
+    <script src="main.js?v=spanish-classics-38" defer></script>
 </head>
 <body>
     <header class="header">
-        <?php if (Auth::isAdmin()): ?>
+        <?php if ($sesion->esAdmin()) { ?>
             <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de Administrador" title="Administrador">
                 <span class="user-card__avatar" aria-hidden="true">A</span>
             </button>
-        <?php elseif (Auth::isUser()): ?>
-            <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de <?= htmlspecialchars(Auth::userName(), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(Auth::userName(), ENT_QUOTES, 'UTF-8') ?>">
-                <span class="user-card__avatar user-card__avatar--reader" aria-hidden="true"><?= htmlspecialchars(Auth::userInitial(), ENT_QUOTES, 'UTF-8') ?></span>
+        <?php } ?>
+        <?php if (!$sesion->esAdmin() && $sesion->hayUsuario()) { ?>
+            <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de <?= $nombreUsuario ?>" title="<?= $nombreUsuario ?>">
+                <span class="user-card__avatar user-card__avatar--reader" aria-hidden="true"><?= $inicialUsuario ?></span>
             </button>
-        <?php else: ?>
+        <?php } ?>
+        <?php if (!$sesion->esAdmin() && !$sesion->hayUsuario()) { ?>
             <button class="button" type="button" data-modal-open="login-modal">Iniciar sesión</button>
             <button class="button" type="button" data-modal-open="register-modal">Crear cuenta</button>
-        <?php endif; ?>
+        <?php } ?>
     </header>
     <main>
         <section class="intro">
@@ -59,13 +70,13 @@
                             Buscar libros
                             <input id="book-search" type="search" placeholder="Título, autor o género" aria-controls="book-grid">
                         </label>
-                        <button class="button catalog-tools__barcode" type="button" data-modal-open="barcode-modal">Buscar por código de barras</button>
+                        <button class="button catalog-tools__barcode" id="barcode-open" type="button" data-modal-open="barcode-modal">Leer ISBN por COM3</button>
                     </div>
                     <p class="catalog-results" id="book-results" aria-live="polite">Se muestran 32 libros</p>
 
                     <div class="book-grid" id="book-grid">
                         <article class="book-card" data-genre="romance">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141439518-L.jpg" alt="Portada de Pride and Prejudice" loading="lazy">
+                            <img class="book-cover" src="fotos/pride-and-prejudice.avif.png" alt="Portada de Pride and Prejudice" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Romance · Clásico</p>
                                 <h3>Pride and Prejudice</h3>
@@ -74,7 +85,7 @@
                             </div>
                         </article>
                         <article class="book-card" data-genre="ciencia-ficcion">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141439471-L.jpg" alt="Portada de Frankenstein" loading="lazy">
+                            <img class="book-cover" src="fotos/Frank.jpg" alt="Portada de Frankenstein" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Ciencia ficción · Clásico</p>
                                 <h3>Frankenstein</h3>
@@ -351,9 +362,23 @@
                     <h3 id="genre-title">Género</h3>
                     <div class="genre-filter-buttons" role="group" aria-labelledby="genre-title">
                         <button class="genre-filter-button" type="button" data-genre-filter="all" aria-pressed="true">Todos</button>
-                        <?php foreach (['romance' => 'Romance', 'ciencia-ficcion' => 'Ciencia ficción', 'terror' => 'Terror', 'fantasia' => 'Fantasía', 'aventura' => 'Aventura', 'novela' => 'Novela', 'misterio' => 'Misterio', 'poesia' => 'Poesía', 'historia' => 'Historia', 'filosofia' => 'Filosofía', 'cuentos' => 'Cuentos'] as $value => $label): ?>
+                        <?php
+                        $generosVista = array(
+                            'romance' => 'Romance',
+                            'ciencia-ficcion' => 'Ciencia ficción',
+                            'terror' => 'Terror',
+                            'fantasia' => 'Fantasía',
+                            'aventura' => 'Aventura',
+                            'novela' => 'Novela',
+                            'misterio' => 'Misterio',
+                            'poesia' => 'Poesía',
+                            'historia' => 'Historia',
+                            'filosofia' => 'Filosofía',
+                            'cuentos' => 'Cuentos',
+                        );
+                        foreach ($generosVista as $value => $label) { ?>
                             <button class="genre-filter-button" type="button" data-genre-filter="<?= $value ?>" aria-pressed="false"><?= $label ?></button>
-                        <?php endforeach; ?>
+                        <?php } ?>
                     </div>
                     <div class="catalog-language-filter">
                         <h3 id="language-title">Idioma</h3>
@@ -415,7 +440,7 @@
         <form method="dialog">
             <button class="modal__close profile-modal__close" type="submit" aria-label="Cerrar perfil">&times;</button>
         </form>
-        <?php if (Auth::isAdmin()): ?>
+        <?php if ($sesion->esAdmin()) { ?>
             <div class="profile-banner profile-banner--admin">
                 <span class="profile-banner__avatar" aria-hidden="true">A</span>
                 <h2 id="profile-title">Administrador</h2>
@@ -425,25 +450,24 @@
                 <a class="header__admin profile-actions__primary" href="admin.php">✎&nbsp; Entrar en Modo Editor</a>
                 <form class="header__logout" action="admin.php" method="post">
                     <input type="hidden" name="action" value="logout">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8') ?>">
                     <button class="admin-logout-button profile-actions__secondary" type="submit">Cerrar sesión</button>
                 </form>
             </div>
-        <?php elseif (Auth::isUser()): ?>
+        <?php } ?>
+        <?php if (!$sesion->esAdmin() && $sesion->hayUsuario()) { ?>
             <div class="auth-modal__banner auth-modal__banner--reader">
-                <span class="auth-modal__avatar auth-modal__avatar--initial" aria-hidden="true"><?= htmlspecialchars(Auth::userInitial(), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="auth-modal__avatar auth-modal__avatar--initial" aria-hidden="true"><?= $inicialUsuario ?></span>
                 <p class="auth-modal__eyebrow">Lector</p>
-                <h2 id="profile-title"><?= htmlspecialchars(Auth::userName(), ENT_QUOTES, 'UTF-8') ?></h2>
+                <h2 id="profile-title"><?= $nombreUsuario ?></h2>
                 <p class="auth-modal__subtitle">Tu cuenta está activa. Podés explorar el catálogo y valorar tus libros favoritos.</p>
             </div>
             <div class="auth-profile__actions">
                 <form class="header__logout" action="admin.php" method="post">
                     <input type="hidden" name="action" value="logout">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['user_csrf'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     <button class="intro__cta auth-submit auth-submit--secondary" type="submit">Cerrar sesión</button>
                 </form>
             </div>
-        <?php endif; ?>
+        <?php } ?>
     </dialog>
 
     <dialog class="modal" id="barcode-modal" aria-labelledby="barcode-title">
@@ -459,6 +483,8 @@
             <input id="barcode-input" name="barcode" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej: 9780141439518 o 1342" required>
             <p id="barcode-status" class="admin-help" aria-live="polite"></p>
             <button class="intro__cta admin-submit" type="submit">Buscar en mi catálogo</button>
+            <button class="intro__cta admin-submit" id="barcode-serial-button" type="button">Conectar lector COM3</button>
+            <p id="barcode-serial-status" class="admin-help" aria-live="polite">También podés ingresar el ISBN manualmente.</p>
         </form>
     </dialog>
 
