@@ -74,7 +74,7 @@ CREATE TABLE usuarios (
     nombre       VARCHAR(100) NOT NULL,
     correo       VARCHAR(150) NOT NULL UNIQUE,
     contrasenia   VARCHAR(255) NOT NULL,  -- guardar el hash (password_hash en PHP), nunca el texto
-    rol          ENUM('cliente', 'vendedor', 'administrador') NOT NULL DEFAULT 'cliente',
+    rol          ENUM('cliente', 'administrador') NOT NULL DEFAULT 'cliente',
     fecha_alta   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

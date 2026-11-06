@@ -15,7 +15,7 @@ services:
   db:
     image: mariadb:10.11
     environment:
-      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-todo_local_root}
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-1234}
       MARIADB_DATABASE: proyectodetodo
       MARIADB_USER: todo_app
       MARIADB_PASSWORD: ${MYSQL_PASSWORD:-todo_local_app}
@@ -27,6 +27,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: pruebablender-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ARBITRARY: "0"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   mariadb_data:

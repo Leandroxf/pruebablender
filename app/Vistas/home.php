@@ -9,31 +9,50 @@ if ($sesion->usuarioId() !== null) {
 }
 $nombreUsuario = htmlspecialchars((string) $sesion->usuarioNombre(), ENT_QUOTES, 'UTF-8');
 $inicialUsuario = htmlspecialchars((string) $sesion->usuarioInicial(), ENT_QUOTES, 'UTF-8');
+
+$esAdminVista = $sesion->esAdmin();
+if (!$esAdminVista && $sesion->hayUsuario()) {
+    $uidAdmin = $sesion->usuarioId();
+    if ($uidAdmin !== null) {
+        try {
+            $usrCheck = new Usuario();
+            $filaRol = $usrCheck->fila('SELECT rol FROM usuarios WHERE id_usuario = ? LIMIT 1', array($uidAdmin));
+            if ($filaRol !== null && Sesion::rolEsAdmin($filaRol['rol'] ?? '')) {
+                $_SESSION['is_admin'] = true;
+                $esAdminVista = true;
+            }
+        } catch (Throwable $e) {
+            // Si falla la consulta, seguimos sin mostrar el panel
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="user-logged-in" content="<?= $logueado ?>">
     <meta name="user-id" content="<?= $idUsuario ?>">
     <title>Audiolibrería de clásicos</title>
-    <link rel="stylesheet" href="style.css?v=spanish-classics-42">
-    <script src="main.js?v=spanish-classics-38" defer></script>
+    <link rel="stylesheet" href="style.css?v=spanish-classics-50">
+    <script src="main.js?v=spanish-classics-56" defer></script>
 </head>
+
 <body>
     <header class="header">
-        <?php if ($sesion->esAdmin()) { ?>
-            <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de Administrador" title="Administrador">
-                <span class="user-card__avatar" aria-hidden="true">A</span>
-            </button>
-        <?php } ?>
-        <?php if (!$sesion->esAdmin() && $sesion->hayUsuario()) { ?>
+        <?php if ($esAdminVista) { ?>
             <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de <?= $nombreUsuario ?>" title="<?= $nombreUsuario ?>">
                 <span class="user-card__avatar user-card__avatar--reader" aria-hidden="true"><?= $inicialUsuario ?></span>
             </button>
         <?php } ?>
-        <?php if (!$sesion->esAdmin() && !$sesion->hayUsuario()) { ?>
+        <?php if (!$esAdminVista && $sesion->hayUsuario()) { ?>
+            <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de <?= $nombreUsuario ?>" title="<?= $nombreUsuario ?>">
+                <span class="user-card__avatar user-card__avatar--reader" aria-hidden="true"><?= $inicialUsuario ?></span>
+            </button>
+        <?php } ?>
+        <?php if (!$esAdminVista && !$sesion->hayUsuario()) { ?>
             <button class="button" type="button" data-modal-open="login-modal">Iniciar sesión</button>
             <button class="button" type="button" data-modal-open="register-modal">Crear cuenta</button>
         <?php } ?>
@@ -70,7 +89,7 @@ $inicialUsuario = htmlspecialchars((string) $sesion->usuarioInicial(), ENT_QUOTE
                             Buscar libros
                             <input id="book-search" type="search" placeholder="Título, autor o género" aria-controls="book-grid">
                         </label>
-                        <button class="button catalog-tools__barcode" id="barcode-open" type="button" data-modal-open="barcode-modal">Leer ISBN por COM3</button>
+                        <button class="button catalog-tools__barcode" id="barcode-open" type="button" data-modal-open="barcode-modal">Leer ISBN / Arduino COM3</button>
                     </div>
                     <p class="catalog-results" id="book-results" aria-live="polite">Se muestran 32 libros</p>
 
@@ -443,8 +462,8 @@ $inicialUsuario = htmlspecialchars((string) $sesion->usuarioInicial(), ENT_QUOTE
         <?php if ($sesion->esAdmin()) { ?>
             <div class="profile-banner profile-banner--admin">
                 <span class="profile-banner__avatar" aria-hidden="true">A</span>
-                <h2 id="profile-title">Administrador</h2>
-                <span class="user-card__badge">Admin</span>
+                <h2 id="profile-title"><?= $nombreUsuario ?></h2>
+                <span class="user-card__badge">Administrador</span>
             </div>
             <div class="profile-actions">
                 <a class="header__admin profile-actions__primary" href="admin.php">✎&nbsp; Entrar en Modo Editor</a>
@@ -472,19 +491,25 @@ $inicialUsuario = htmlspecialchars((string) $sesion->usuarioInicial(), ENT_QUOTE
 
     <dialog class="modal" id="barcode-modal" aria-labelledby="barcode-title">
         <div class="modal__heading">
-            <h2 id="barcode-title">Buscar por código de barras</h2>
+            <h2 id="barcode-title">Buscar por ISBN / Arduino</h2>
             <form method="dialog">
                 <button class="modal__close" type="submit" aria-label="Cerrar búsqueda por código">&times;</button>
             </form>
         </div>
-        <p>Escribí o pegá el ISBN / código de barras del libro. Se busca solo en tu catálogo local (ID o ISBN de la portada).</p>
-        <form id="barcode-form">
-            <label for="barcode-input">ISBN o ID</label>
-            <input id="barcode-input" name="barcode" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej: 9780141439518 o 1342" required>
+        <p class="admin-help">Conecta el scanner y el Arduino en sus puertos COM separados. Escanea o ingresa el ISBN para mostrar el título en el LCD.</p>
+        <form id="barcode-form" class="barcode-form" action="buscar.php" method="get">
+            <label class="auth-field" for="barcode-input">
+                <span>ISBN o ID del libro</span>
+                <input id="barcode-input" name="ean" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej: 9780141439518 o 1342" required>
+            </label>
             <p id="barcode-status" class="admin-help" aria-live="polite"></p>
-            <button class="intro__cta admin-submit" type="submit">Buscar en mi catálogo</button>
-            <button class="intro__cta admin-submit" id="barcode-serial-button" type="button">Conectar lector COM3</button>
-            <p id="barcode-serial-status" class="admin-help" aria-live="polite">También podés ingresar el ISBN manualmente.</p>
+            <div class="barcode-actions">
+                <button class="barcode-btn" id="arduino-display-button" type="button">Conectar COM del Arduino LCD</button>
+                <button class="barcode-btn barcode-btn--primary" type="submit">Buscar ISBN y mostrar t?tulo</button>
+                <button class="barcode-btn" id="barcode-serial-button" type="button">Conectar COM del scanner</button>
+            </div>
+            <p id="arduino-display-status" class="admin-help" aria-live="polite"></p>
+            <p id="barcode-serial-status" class="admin-help" aria-live="polite"></p>
         </form>
     </dialog>
 
@@ -495,8 +520,8 @@ $inicialUsuario = htmlspecialchars((string) $sesion->usuarioInicial(), ENT_QUOTE
             </form>
             <span class="auth-modal__avatar" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M12 6.5C10.5 5 8.2 4.2 5 4.5v13c3.2-.3 5.5.5 7 2 1.5-1.5 3.8-2.3 7-2v-13c-3.2-.3-5.5.5-7 2Z"/>
-                    <path d="M12 6.5v13"/>
+                    <path d="M12 6.5C10.5 5 8.2 4.2 5 4.5v13c3.2-.3 5.5.5 7 2 1.5-1.5 3.8-2.3 7-2v-13c-3.2-.3-5.5.5-7 2Z" />
+                    <path d="M12 6.5v13" />
                 </svg>
             </span>
             <p class="auth-modal__eyebrow">Tu biblioteca</p>
@@ -513,6 +538,10 @@ $inicialUsuario = htmlspecialchars((string) $sesion->usuarioInicial(), ENT_QUOTE
                 <span>Contraseña</span>
                 <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
             </label>
+            <label class="auth-remember">
+                <input type="checkbox" name="remember" value="1">
+                <span>Recordarme en este dispositivo durante 30 d?as</span>
+            </label>
             <button class="intro__cta auth-submit" type="submit">Entrar</button>
             <p class="auth-switch">¿No tenés cuenta? <button class="auth-switch__link" type="button" data-modal-open="register-modal">Crear una</button></p>
         </form>
@@ -525,8 +554,8 @@ $inicialUsuario = htmlspecialchars((string) $sesion->usuarioInicial(), ENT_QUOTE
             </form>
             <span class="auth-modal__avatar" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M12 6.5C10.5 5 8.2 4.2 5 4.5v13c3.2-.3 5.5.5 7 2 1.5-1.5 3.8-2.3 7-2v-13c-3.2-.3-5.5.5-7 2Z"/>
-                    <path d="M12 6.5v13"/>
+                    <path d="M12 6.5C10.5 5 8.2 4.2 5 4.5v13c3.2-.3 5.5.5 7 2 1.5-1.5 3.8-2.3 7-2v-13c-3.2-.3-5.5.5-7 2Z" />
+                    <path d="M12 6.5v13" />
                 </svg>
             </span>
             <p class="auth-modal__eyebrow">Sumate a la biblioteca</p>

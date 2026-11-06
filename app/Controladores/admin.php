@@ -71,18 +71,26 @@ class Admin
     {
         $username = trim((string) filter_input(INPUT_POST, 'username'));
         $password = (string) filter_input(INPUT_POST, 'password');
+        $recordarme = filter_input(INPUT_POST, 'remember') === '1';
 
         if ($username === ADMIN_USUARIO && $password === ADMIN_PASSWORD) {
             $cuentaAdmin = new Usuario();
             $adminId = $cuentaAdmin->obtenerOCrearAdmin(ADMIN_USUARIO, ADMIN_PASSWORD);
             $this->sesion->entrarAdmin($adminId, 'Administrador');
+            $this->sesion->configurarRecordarme($adminId, $recordarme);
             Respuesta::redirigir('admin.php');
         }
 
         $usuario = new Usuario();
         $cuenta = $usuario->autenticar($username, $password);
         if ($cuenta !== null) {
+            if (Sesion::rolEsAdmin($cuenta['rol'] ?? '')) {
+                $this->sesion->entrarAdmin($cuenta['id'], $cuenta['nombre']);
+                $this->sesion->configurarRecordarme($cuenta['id'], $recordarme);
+                Respuesta::redirigir('admin.php');
+            }
             $this->sesion->entrarUsuario($cuenta['id'], $cuenta['nombre']);
+            $this->sesion->configurarRecordarme($cuenta['id'], $recordarme);
             Respuesta::redirigir('./');
         }
 
@@ -144,6 +152,7 @@ class Admin
         if ($section === 'manage') {
             $books = $this->libro->resumen();
         }
+        $sesion = $this->sesion;
         require PROJECT_ROOT . '/app/Vistas/admin-panel.php';
     }
 }

@@ -1,0 +1,103 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <string.h>
+
+// LCD I2C 16x2. Cambia 0x27 por 0x20 si esa es la direccion de tu modulo.
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+const unsigned long BAUD_RATE = 9600;
+const byte MAX_MESSAGE_LENGTH = 64;
+const byte LED_ROJO = 13;
+const byte LED_VERDE = 12;
+const byte BUZZER = 7;
+
+char messageBuffer[MAX_MESSAGE_LENGTH];
+byte messageLength = 0;
+
+void showWaiting() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Esperando...");
+  digitalWrite(LED_ROJO, LOW);
+  digitalWrite(LED_VERDE, LOW);
+}
+
+void showBookTitle(const char *title) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  for (byte i = 0; i < 16 && title[i] != '\0'; i++) {
+    lcd.print(title[i]);
+  }
+  lcd.setCursor(0, 1);
+  for (byte i = 16; i < 32 && title[i] != '\0'; i++) {
+    lcd.print(title[i]);
+  }
+
+  digitalWrite(LED_ROJO, LOW);
+  digitalWrite(LED_VERDE, HIGH);
+  // Dos tonos ascendentes: libro encontrado.
+  tone(BUZZER, 880, 120);
+  delay(150);
+  tone(BUZZER, 1175, 180);
+}
+
+void showNotFound() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("ERROR 404:");
+  lcd.setCursor(0, 1);
+  lcd.print("Libro no hallado");
+
+  digitalWrite(LED_ROJO, HIGH);
+  digitalWrite(LED_VERDE, LOW);
+  // Dos tonos graves: libro/ISBN no encontrado.
+  tone(BUZZER, 220, 250);
+  delay(300);
+  tone(BUZZER, 165, 400);
+}
+
+void setup() {
+  Serial.begin(BAUD_RATE);
+  Serial.setTimeout(1000);
+
+  pinMode(LED_ROJO, OUTPUT);
+  pinMode(LED_VERDE, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+
+  lcd.init();
+  lcd.backlight();
+  showWaiting();
+}
+
+void processMessage() {
+  messageBuffer[messageLength] = '\0';
+  if (messageLength == 0) return;
+
+  if (strncmp(messageBuffer, "error", 5) == 0 ||
+      strncmp(messageBuffer, "ERROR", 5) == 0) {
+    showNotFound();
+  } else {
+    showBookTitle(messageBuffer);
+  }
+
+  delay(5000);
+  showWaiting();
+}
+
+void loop() {
+  while (Serial.available() > 0) {
+    const char incoming = (char)Serial.read();
+
+    // El navegador envia titulo + punto; lectores serie tambien pueden usar CR/LF.
+    if (incoming == '\r') continue;
+    if (incoming == '.' || incoming == '\n') {
+      processMessage();
+      messageLength = 0;
+      continue;
+    }
+
+    if (messageLength < MAX_MESSAGE_LENGTH - 1) {
+      messageBuffer[messageLength++] = incoming;
+    }
+  }
+}

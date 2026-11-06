@@ -6,6 +6,7 @@ $section = $section ?? 'home';
 $message = $message ?? null;
 $success = $success ?? false;
 $books = $books ?? array();
+$nombreAdmin = htmlspecialchars((string) $sesion->usuarioNombre(), ENT_QUOTES, 'UTF-8');
 
 $titulos = array('add' => 'Agregar un libro', 'manage' => 'Administrar libros');
 $titulo = $titulos[$section] ?? 'Administración';
@@ -29,6 +30,7 @@ if ($success) {
             <div>
                 <p class="catalog__eyebrow">Modo Editor · Panel de administrador</p>
                 <h1><?= $titulo ?></h1>
+                <p class="admin-account-label">Sesi?n de <strong><?= $nombreAdmin ?></strong> ? Administrador</p>
             </div>
             <?php if ($section === 'home') { ?>
                 <a class="admin-logout-button" href="./">Volver al inicio</a>

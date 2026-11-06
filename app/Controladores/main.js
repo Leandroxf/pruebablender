@@ -126,7 +126,8 @@ function filterBooks() {
 
 searchInput?.addEventListener("input", filterBooks);
 $("#barcode-form")?.addEventListener("submit", (event) => {
-	event.preventDefault();
+	// Dejar que el formulario se envíe directamente a buscar.php (Opción 1 PHP)
+	return true;
 	const input = $("#barcode-input");
 	const status = $("#barcode-status");
 	const code = String(input?.value ?? "").replace(/[^0-9Xx]/g, "");

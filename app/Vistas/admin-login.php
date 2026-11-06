@@ -10,7 +10,7 @@ $error = $error ?? null;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Ingreso de administrador</title>
-    <link rel="stylesheet" href="style.css?v=spanish-classics-26">
+    <link rel="stylesheet" href="style.css?v=spanish-classics-27">
 </head>
 <body class="admin-page">
     <main class="admin-card">
@@ -21,12 +21,16 @@ $error = $error ?? null;
         <?php if ($error !== null) { ?>
             <p class="admin-message admin-message--error" role="alert"><?= htmlspecialchars((string) $error, ENT_QUOTES, 'UTF-8') ?></p>
         <?php } ?>
-        <form action="admin.php" method="post">
+        <form class="admin-login-form" action="admin.php" method="post">
             <input type="hidden" name="action" value="login">
             <label for="admin-username">Usuario</label>
             <input id="admin-username" name="username" type="text" autocomplete="username" autofocus required>
-            <label for="admin-password">Contraseña</label>
+            <label for="admin-password">Contrase?a</label>
             <input id="admin-password" name="password" type="password" autocomplete="current-password" required>
+            <label class="admin-remember" for="admin-remember">
+                <input id="admin-remember" type="checkbox" name="remember" value="1">
+                <span>Recordarme en este dispositivo durante 30 d?as</span>
+            </label>
             <button class="intro__cta admin-submit" type="submit">Entrar</button>
         </form>
     </main>

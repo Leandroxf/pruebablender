@@ -20,6 +20,9 @@ try {
         require PROJECT_ROOT . '/app/Controladores/libro.php';
     } elseif ($ruta === 'api/lista.php') {
         Respuesta::json((new Libro())->resumen());
+    } elseif ($ruta === 'api/arduino_lcd.php') {
+        require PROJECT_ROOT . '/api/arduino_lcd.php';
+        exit;
     } elseif ($ruta === 'api/valoraciones.php') {
         require PROJECT_ROOT . '/app/Controladores/valoraciones.php';
     } elseif ($ruta === 'api/registro.php') {

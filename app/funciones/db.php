@@ -59,7 +59,18 @@ class BaseDatos
             CONSTRAINT chk_valoraciones_puntuacion CHECK (puntuacion BETWEEN 1 AND 5)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
 
-        $consultas = array($sql_usuarios, $sql_compras, $sql_valoraciones);
+        $sql_recordar = 'CREATE TABLE IF NOT EXISTS tokens_recordar (
+            selector CHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+            id_usuario INT UNSIGNED NOT NULL,
+            token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+            vence DATETIME NOT NULL,
+            creado TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (selector),
+            KEY tokens_recordar_usuario (id_usuario),
+            CONSTRAINT fk_tokens_recordar_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+
+        $consultas = array($sql_usuarios, $sql_compras, $sql_valoraciones, $sql_recordar);
         foreach ($consultas as $sql) {
             self::$conexion->exec($sql);
         }

@@ -91,14 +91,17 @@ const bookResults = $("#book-results");
 const emptyMessage = $("#book-empty");
 let selectedGenre = "all";
 let selectedLanguage = "all";
+let lastSearchSentToArduino = "";
 
 function normalizeText(value) {
 	return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
 function filterBooks() {
-	const query = normalizeText(searchInput?.value.trim());
+	const queryRaw = searchInput?.value.trim() || "";
+	const query = normalizeText(queryRaw);
 	let visibleCount = 0;
+	let firstMatchTitle = "";
 
 	bookCards.forEach((card) => {
 		const searchableText = [
@@ -114,89 +117,223 @@ function filterBooks() {
 		const matchesGenre = selectedGenre === "all" || genres.includes(normalizeText(selectedGenre));
 		const matchesLanguage = selectedLanguage === "all" || (card.dataset.language || "en") === selectedLanguage;
 
-		card.hidden = !matchesSearch || !matchesGenre || !matchesLanguage;
-		if (!card.hidden) visibleCount += 1;
+		const isVisible = matchesSearch && matchesGenre && matchesLanguage;
+		card.hidden = !isVisible;
+		if (isVisible && visibleCount === 0) {
+			firstMatchTitle = card.querySelector("h3")?.textContent || "";
+		}
+		if (isVisible) visibleCount += 1;
 	});
 
 	if (bookResults) {
 		bookResults.textContent = `Se muestran ${visibleCount} ${visibleCount === 1 ? "libro" : "libros"}`;
 	}
 	if (emptyMessage) emptyMessage.hidden = visibleCount > 0;
+
+	// Enviar al Arduino solo si hay resultado único o primer resultado y cambió la búsqueda
+	if (queryRaw && visibleCount > 0 && firstMatchTitle) {
+		if (lastSearchSentToArduino !== queryRaw.toLowerCase()) {
+			lastSearchSentToArduino = queryRaw.toLowerCase();
+			sendBookToArduino(firstMatchTitle);
+		}
+	}
 }
 
 const barcodeSerialButton = $("#barcode-serial-button");
 const barcodeSerialStatus = $("#barcode-serial-status");
 let barcodeSerialPort = null;
 
+// Conexión para mostrar nombre del libro en pantalla Arduino por COM3 (PHP)
+
+const arduinoDisplayButton = $("#arduino-display-button");
+const arduinoDisplayStatus = $("#arduino-display-status");
+let arduinoSerialPort = null;
+let barcodeSerialReader = null;
+
+function showSerialStatus(element, message, clearAfter = 0) {
+	if (!element) return;
+	clearTimeout(element.statusClearTimer);
+	element.textContent = message;
+	if (clearAfter > 0 && message) {
+		element.statusClearTimer = setTimeout(() => {
+			element.textContent = "";
+		}, clearAfter);
+	}
+}
+async function ensureArduinoPort() {
+	if (!("serial" in navigator)) throw new Error("Web Serial no est? disponible. Abr? el sitio en Chrome o Edge desde http://localhost:8080.");
+	if (!window.isSecureContext) throw new Error("Web Serial est? bloqueado por el contexto actual. Abr? http://localhost:8080.");
+	if (!arduinoSerialPort) arduinoSerialPort = await navigator.serial.requestPort();
+	if (!arduinoSerialPort.writable) {
+		await arduinoSerialPort.open({ baudRate: 9600 });
+		// Abrir el puerto reinicia muchas placas Arduino.
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+	}
+}
+
+async function sendBookToArduino(title) {
+	if (!title) return false;
+	try {
+		if (!arduinoSerialPort?.writable) throw new Error("Primero conect? el LCD con el bot?n Conectar Arduino LCD por USB.");
+		if (arduinoDisplayStatus) arduinoDisplayStatus.textContent = `Enviando al LCD: ${title}`;
+		const writer = arduinoSerialPort.writable.getWriter();
+		try {
+			await writer.write(new TextEncoder().encode(`${title.slice(0, 32)}.`));
+		} finally {
+			writer.releaseLock();
+		}
+		if (arduinoDisplayStatus) arduinoDisplayStatus.textContent = `Arduino conectado. T?tulo enviado: ${title.slice(0, 32)}`;
+		if (arduinoDisplayButton) arduinoDisplayButton.textContent = "Arduino LCD conectado";
+		return true;
+	} catch (error) {
+		console.error("Error enviando al Arduino por USB:", error);
+		const message = error?.name === "NotFoundError"
+			? "No se seleccion? el puerto del Arduino. Volv? a buscar el ISBN y eleg? su puerto."
+			: error.message || "No se pudo enviar al Arduino. Cerr? el Monitor Serie y revis? la conexi?n.";
+		showSerialStatus(arduinoDisplayStatus, message, 10000);
+		return false;
+	}
+}
+
+arduinoDisplayButton?.addEventListener("click", async () => {
+	try {
+		await ensureArduinoPort();
+		await sendBookToArduino("CONECTADO");
+	} catch (error) {
+		if (error?.name !== "NotFoundError") console.error("No se pudo abrir el puerto del Arduino:", error);
+		const message = error?.name === "NotFoundError"
+			? "No se seleccion? ning?n puerto del Arduino."
+			: error.message || "No se pudo abrir el puerto. Cerr? el Monitor Serie y reconect? la placa.";
+		showSerialStatus(arduinoDisplayStatus, message, 10000);
+	}
+});
+
 barcodeSerialButton?.addEventListener("click", async () => {
 	if (!("serial" in navigator)) {
-		if (barcodeSerialStatus) barcodeSerialStatus.textContent = "Este navegador no permite Web Serial. Usa Chrome o Edge en localhost.";
+		showSerialStatus(barcodeSerialStatus, "Web Serial requiere Chrome o Edge desde localhost.", 10000);
 		return;
 	}
 
 	try {
-		barcodeSerialStatus.textContent = "Seleccioná el lector serie cuando aparezca la ventana del navegador…";
+		showSerialStatus(barcodeSerialStatus, "Eleg? el COM del scanner (distinto al Arduino).");
 		barcodeSerialPort = await navigator.serial.requestPort();
 		await barcodeSerialPort.open({ baudRate: 9600 });
-		barcodeSerialStatus.textContent = "Lector conectado. Escaneá el ISBN…";
+		showSerialStatus(barcodeSerialStatus, "Scanner conectado. Escane? un ISBN.");
 		const decoder = new TextDecoderStream();
 		barcodeSerialPort.readable.pipeTo(decoder.writable);
 		const reader = decoder.readable.getReader();
+		barcodeSerialReader = reader;
 		let buffer = "";
 		while (true) {
 			const { value, done } = await reader.read();
 			if (done) break;
 			buffer += value || "";
-			const lines = buffer.split(/\r?\n/);
+			const lines = buffer.split(/[\r\n]+/);
 			buffer = lines.pop() || "";
 			for (const line of lines) {
 				const isbn = line.replace(/[^0-9Xx]/g, "");
-				if (isbn) {
-					$("#barcode-input").value = isbn;
-					barcodeSerialStatus.textContent = `ISBN recibido: ${isbn}`;
-					$("#barcode-form")?.requestSubmit();
-				}
+				if (!isbn) continue;
+				$("#barcode-input").value = isbn;
+				showSerialStatus(barcodeSerialStatus, `ISBN le?do del scanner: ${isbn}`);
+				$("#barcode-form")?.requestSubmit();
 			}
 		}
 	} catch (error) {
-		console.error("Error del lector serie:", error);
-		if (barcodeSerialStatus) barcodeSerialStatus.textContent = "No se pudo conectar el lector. Verificá que esté disponible.";
+		if (error?.name !== "NotFoundError") console.error("Error del COM del scanner:", error);
+		const message = error?.name === "NotFoundError"
+			? "No se seleccion? el COM del scanner. No se ley? ning?n ISBN."
+			: "No se pudo abrir el COM del scanner. Cerr? su monitor serie y revis? los baudios.";
+		showSerialStatus(barcodeSerialStatus, message, 10000);
+	} finally {
+		barcodeSerialReader = null;
+		if (barcodeSerialPort?.readable) {
+			try { await barcodeSerialPort.close(); } catch (error) { console.warn("No se pudo cerrar el COM del scanner:", error); }
+		}
+		barcodeSerialPort = null;
 	}
 });
 
-$("#barcode-form")?.addEventListener("submit", (event) => {
+function normalizeBookCode(value) {
+	return String(value ?? "").trim().toUpperCase().replace(/[^0-9X]/g, "");
+}
+
+function cardMatchesBookCode(card, code) {
+	const digits = code.replace(/[^0-9]/g, "");
+	const readerUrl = card.querySelector("[data-reader-url]")?.dataset.readerUrl || "";
+	const readerId = readerUrl.match(/(\d+)\.html$/)?.[1] || "";
+	const cover = card.querySelector(".book-cover")?.getAttribute("src") || "";
+	const coverIsbn = cover.match(/isbn\/([0-9X]+)/i)?.[1] || "";
+	const cardIsbn = card.dataset.isbn || "";
+	return normalizeBookCode(readerId) === code ||
+		(Boolean(digits) && normalizeBookCode(readerId) === digits) ||
+		normalizeBookCode(coverIsbn) === code ||
+		normalizeBookCode(cardIsbn) === code;
+}
+
+async function findBookTitleByCode(code) {
+	// Primero comprobar los datos de las tarjetas, incluidos libros de la base de datos.
+	const card = bookCards.find((candidate) => cardMatchesBookCode(candidate, code));
+	if (card) return { title: card.querySelector("h3")?.textContent.trim() || "", card };
+
+	// Las tarjetas est?ticas en espa?ol no siempre incluyen ISBN en el HTML;
+	// buscar tambi?n en ambos cat?logos JSON (ISBN y URL de portada).
+	const catalogs = await Promise.all([
+		loadBookCatalog("en").catch(() => ({})),
+		loadBookCatalog("es").catch(() => ({}))
+	]);
+	for (const catalog of catalogs) {
+		for (const [id, book] of Object.entries(catalog)) {
+			const coverIsbn = String(book.cover || "").match(/isbn\/([0-9X]+)/i)?.[1] || "";
+			if (normalizeBookCode(book.isbn) === code || normalizeBookCode(coverIsbn) === code) {
+				return { title: String(book.titulo || "").trim(), card: null, id };
+			}
+		}
+	}
+	return null;
+}
+
+$("#barcode-form")?.addEventListener("submit", async (event) => {
 	event.preventDefault();
 	const input = $("#barcode-input");
 	const status = $("#barcode-status");
-	const code = String(input?.value ?? "").replace(/[^0-9Xx]/g, "");
+	const code = normalizeBookCode(input?.value);
 	if (!code) {
-		if (status) status.textContent = "Ingresá un ISBN o ID válido.";
+		if (status) status.textContent = "Ingres? un ISBN o ID v?lido.";
 		return;
 	}
-	const digits = code.replace(/[^0-9]/g, "");
-	let found = null;
-	for (const card of bookCards) {
-		const readerId = card.querySelector("[data-reader-url]")?.dataset.readerUrl.match(/(\d+)\.html$/)?.[1] || "";
-		const coverSrc = card.querySelector(".book-cover")?.src || "";
-		const isbnInCover = coverSrc.match(/isbn\/([0-9Xx]+)/i)?.[1] || "";
-		const isbnInCatalog = (card.dataset.isbn || "").replace(/[^0-9Xx]/g, "");
-		const isbnMatches =
-			(digits && isbnInCover.replace(/[^0-9]/g, "") === digits) ||
-			(digits && isbnInCatalog.replace(/[^0-9]/g, "") === digits);
-		if ((digits && readerId === digits) || isbnMatches) {
-			found = card;
-			break;
-		}
+
+	// El scanner y el Arduino usan puertos independientes. Solo consultar el
+	// cat?logo cuando el COM del Arduino ya est? abierto para enviar la respuesta.
+	if (!arduinoSerialPort?.writable) {
+		if (status) status.textContent = "Conect? primero el COM del Arduino LCD; el scanner usa otro COM.";
+		showSerialStatus(arduinoDisplayStatus, "Arduino LCD desconectado. Puls? Conectar COM del Arduino LCD y eleg? su puerto.", 10000);
+		return;
 	}
-	if (found) {
-		if (status) status.textContent = "Libro encontrado en tu catálogo. Abriendo…";
-		$("#barcode-modal")?.close();
-		found.scrollIntoView({ behavior: "smooth", block: "center" });
-		found.style.outline = "3px solid #0f766e";
-		setTimeout(() => { found.style.outline = ""; }, 2500);
-		openBookReader(found.querySelector("[data-reader-url]")?.dataset.readerUrl, found);
-	} else if (status) {
-		status.textContent = `No se encontró "${code}" en tu catálogo local.`;
+
+	if (status) status.textContent = "Buscando el libro en el cat?logo?";
+	try {
+		const match = await findBookTitleByCode(code);
+		if (!match?.title) {
+			const sent = arduinoSerialPort?.writable ? await sendBookToArduino("error") : false;
+			if (status) status.textContent = sent
+				? `No encontramos un libro para ${code}. Aviso enviado al LCD.`
+				: `No encontramos un libro para ${code}.`;
+			return;
+		}
+
+		const sent = arduinoSerialPort?.writable ? await sendBookToArduino(match.title) : false;
+		if (status && arduinoSerialPort?.writable) status.textContent = sent
+			? `Libro encontrado y enviado al LCD: ${match.title}.`
+			: `Libro encontrado: ${match.title}; fall? el env?o al LCD.`;
+		else if (status) status.textContent = `Libro encontrado: ${match.title}.`;
+		if (match.card) {
+			match.card.scrollIntoView({ behavior: "smooth", block: "center" });
+			match.card.style.outline = "3px solid #0f766e";
+			setTimeout(() => { match.card.style.outline = ""; }, 2500);
+		}
+	} catch (error) {
+		console.error("Error buscando t?tulo por ISBN:", error);
+		if (status) status.textContent = "No se pudo consultar el cat?logo. Intent? de nuevo.";
 	}
 });
 genreButtons.forEach((button) => {
@@ -946,7 +1083,9 @@ async function loadBookText(bookId, language) {
 async function openBookReader(bookUrl, card) {
 	const requestId = ++readerRequestId;
 	bookLang = card.dataset.language === "es" ? "es" : "en";
-	readerTitle.textContent = card.querySelector("h3").textContent;
+	const bookTitle = card.querySelector("h3")?.textContent || "";
+	readerTitle.textContent = bookTitle;
+	sendBookToArduino(bookTitle);
 	readerAuthor.textContent = card.querySelector(".book-card__info > p:last-of-type").textContent;
 	readerContent.textContent = "";
 	readerChapterList.replaceChildren();
@@ -1016,7 +1155,8 @@ async function openBookReader(bookUrl, card) {
 document.addEventListener("click", (event) => {
 	const button = event.target.closest(".book-read[data-reader-url]");
 	if (!button) return;
-	openBookReader(button.dataset.readerUrl, button.closest(".book-card"));
+	const card = button.closest(".book-card");
+	openBookReader(button.dataset.readerUrl, card);
 });
 
 // Comprar desde el lector: al terminar, se abre el libro ya comprado.

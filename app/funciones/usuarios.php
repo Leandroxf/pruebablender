@@ -2,6 +2,44 @@
 
 // Cuentas de usuario guardadas en MySQL.
 
+class ModeloSesionPersistente extends Modelo
+{
+    public function guardarToken($selector, $idUsuario, $tokenHash, $vence)
+    {
+        $this->ejecutar(
+            'INSERT INTO tokens_recordar (selector, id_usuario, token_hash, vence) VALUES (?, ?, ?, FROM_UNIXTIME(?))',
+            array($selector, $idUsuario, $tokenHash, $vence)
+        );
+    }
+
+    public function consumirToken($selector, $token)
+    {
+        $fila = $this->fila(
+            'SELECT tr.id_usuario, tr.token_hash, u.nombre, u.rol
+             FROM tokens_recordar tr
+             INNER JOIN usuarios u ON u.id_usuario = tr.id_usuario
+             WHERE tr.selector = ? AND tr.vence > NOW()
+             LIMIT 1',
+            array($selector)
+        );
+        if ($fila === null || !hash_equals((string) $fila['token_hash'], hash('sha256', $token))) {
+            return null;
+        }
+
+        $this->borrarToken($selector);
+        return array(
+            'id' => (int) $fila['id_usuario'],
+            'nombre' => (string) $fila['nombre'],
+            'rol' => (string) $fila['rol'],
+        );
+    }
+
+    public function borrarToken($selector)
+    {
+        $this->ejecutar('DELETE FROM tokens_recordar WHERE selector = ?', array($selector));
+    }
+}
+
 class Usuario extends Modelo
 {
     /** Crea una cuenta nueva y devuelve sus datos. */
