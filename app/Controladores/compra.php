@@ -37,10 +37,23 @@ if ($compra->posee($sesion->usuarioId(), $id, $idioma)) {
     Respuesta::json(array('error' => 'Este libro ya está en tu biblioteca.'), 409);
 }
 
-$comprobante = $compra->comprar($sesion->usuarioId(), $id, $idioma, (float) $fila['precio']);
+try {
+    $comprobante = $compra->comprar($sesion->usuarioId(), $id, $idioma, (float) $fila['precio']);
+} catch (DomainException $error) {
+    $filaActualizada = $libro->filaPago($id, $idioma);
+    Respuesta::json(array(
+        'error' => $error->getMessage(),
+        'stock' => $filaActualizada === null || $filaActualizada['stock'] === null
+            ? null
+            : (int) $filaActualizada['stock'],
+    ), 409);
+}
+
+$filaActualizada = $libro->filaPago($id, $idioma);
 
 Respuesta::json(array(
     'mensaje' => '¡Compra realizada! El libro ya está en tu biblioteca.',
     'compra' => $comprobante,
+    'stock' => $filaActualizada['stock'] === null ? null : (int) $filaActualizada['stock'],
     'compras' => array_values($compra->de($sesion->usuarioId())),
 ), 201);

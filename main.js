@@ -83,27 +83,32 @@ registerForm?.addEventListener("submit", async (event) => {
 });
 
 const catalog = $(".catalog");
+const catalogs = $$(".catalog");
 
-if (catalog && "IntersectionObserver" in window) {
+if (catalogs.length && "IntersectionObserver" in window) {
 	const catalogObserver = new IntersectionObserver((entries, observer) => {
-		if (entries.some((entry) => entry.isIntersecting)) {
-			catalog.classList.add("is-visible");
-			observer.disconnect();
-		}
+		entries.forEach((entry) => {
+			if (!entry.isIntersecting) return;
+			entry.target.classList.add("is-visible");
+			observer.unobserve(entry.target);
+		});
 	}, { threshold: 0.12 });
 
-	catalogObserver.observe(catalog);
-	setTimeout(() => catalog.classList.add("is-visible"), 1200);
+	catalogs.forEach((section) => catalogObserver.observe(section));
+	setTimeout(() => catalogs.forEach((section) => section.classList.add("is-visible")), 1200);
 } else {
-	catalog?.classList.add("is-visible");
+	catalogs.forEach((section) => section.classList.add("is-visible"));
 }
 
 const searchInput = $("#book-search");
 const genreButtons = $$("[data-genre-filter]");
 const languageButtons = $$("[data-language-filter]");
 const bookCards = $$(".book-card");
+const shopGrid = $("#shop-grid");
 const bookResults = $("#book-results");
 const emptyMessage = $("#book-empty");
+const shopResults = $("#shop-results");
+const shopEmptyMessage = $("#shop-empty");
 let selectedGenre = "all";
 let selectedLanguage = "all";
 let lastSearchSentToArduino = "";
@@ -115,7 +120,8 @@ function normalizeText(value) {
 function filterBooks() {
 	const queryRaw = searchInput?.value.trim() || "";
 	const query = normalizeText(queryRaw);
-	let visibleCount = 0;
+	let visibleClassicCount = 0;
+	let visibleShopCount = 0;
 	let firstMatchTitle = "";
 
 	bookCards.forEach((card) => {
@@ -134,19 +140,26 @@ function filterBooks() {
 
 		const isVisible = matchesSearch && matchesGenre && matchesLanguage;
 		card.hidden = !isVisible;
-		if (isVisible && visibleCount === 0) {
+		if (isVisible && !firstMatchTitle) {
 			firstMatchTitle = card.querySelector("h3")?.textContent || "";
 		}
-		if (isVisible) visibleCount += 1;
+		if (isVisible) {
+			if (card.dataset.shopBook === "1") visibleShopCount += 1;
+			else visibleClassicCount += 1;
+		}
 	});
 
 	if (bookResults) {
-		bookResults.textContent = `Se muestran ${visibleCount} ${visibleCount === 1 ? "libro" : "libros"}`;
+		bookResults.textContent = `Se muestran ${visibleClassicCount} ${visibleClassicCount === 1 ? "libro" : "libros"}`;
 	}
-	if (emptyMessage) emptyMessage.hidden = visibleCount > 0;
+	if (emptyMessage) emptyMessage.hidden = visibleClassicCount > 0;
+	if (shopResults) {
+		shopResults.textContent = `Se muestran ${visibleShopCount} ${visibleShopCount === 1 ? "libro en venta" : "libros en venta"}`;
+	}
+	if (shopEmptyMessage) shopEmptyMessage.hidden = visibleShopCount > 0;
 
 	// Enviar al Arduino solo si hay resultado único o primer resultado y cambió la búsqueda
-	if (queryRaw && visibleCount > 0 && firstMatchTitle) {
+	if (queryRaw && (visibleClassicCount + visibleShopCount) > 0 && firstMatchTitle) {
 		if (lastSearchSentToArduino !== queryRaw.toLowerCase()) {
 			lastSearchSentToArduino = queryRaw.toLowerCase();
 			sendBookToArduino(firstMatchTitle);
@@ -564,7 +577,7 @@ async function saveBookRating(card, rating) {
 	}
 }
 
-catalog?.addEventListener("click", async (event) => {
+document.addEventListener("click", async (event) => {
 	const button = event.target.closest('[data-rating-action="rate"]');
 	if (button) {
 		const card = button.closest(".book-card");
@@ -661,7 +674,11 @@ function renderCart() {
 
 	$$('[data-purchase-action="add"]').forEach((button) => {
 		const key = bookKey(button.dataset.bookId, button.dataset.bookLanguage);
-		button.textContent = cartItems.has(key) ? "En el carrito" : "Agregar al carrito";
+		const card = button.closest(".book-card");
+		const stock = card?.dataset.stock;
+		const agotado = stock !== "" && stock !== undefined && Number(stock) <= 0;
+		button.disabled = agotado;
+		button.textContent = agotado ? "Agotado" : cartItems.has(key) ? "En el carrito" : "Agregar al carrito";
 	});
 }
 
@@ -776,7 +793,11 @@ function refreshPaidCard(card, bookId, language) {
 
 	if (buyButton) {
 		if (owned) {
-			if (card.dataset.presentation === "1") {
+			if (card.dataset.readable === "0") {
+				buyButton.removeAttribute("data-purchase-action");
+				buyButton.removeAttribute("data-book-price");
+				buyButton.hidden = true;
+			} else if (card.dataset.presentation === "1") {
 				buyButton.className = "book-read";
 				buyButton.removeAttribute("data-purchase-action");
 				buyButton.removeAttribute("data-book-price");
@@ -793,8 +814,16 @@ function refreshPaidCard(card, bookId, language) {
 			}
 		} else {
 			buyButton.hidden = false;
-			buyButton.disabled = false;
+			const stock = card.dataset.stock;
+			buyButton.disabled = stock !== "" && stock !== undefined && Number(stock) <= 0;
+			buyButton.textContent = buyButton.disabled ? "Agotado" : "Agregar al carrito";
 		}
+	}
+	const stockLabel = card.querySelector(".book-card__stock");
+	if (stockLabel && card.dataset.stock !== "") {
+		const stock = Number(card.dataset.stock);
+		stockLabel.textContent = stock > 0 ? `Disponibles: ${stock}` : "Sin stock";
+		stockLabel.classList.toggle("book-card__stock--empty", stock <= 0);
 	}
 	if (badge) {
 		if (!userLoggedIn) {
@@ -837,12 +866,28 @@ async function buyBook(bookId, language, price, button) {
 		});
 		const data = await response.json();
 		if (!response.ok) {
+			const card = bookCards.find((candidate) =>
+				candidate.dataset.bookId === String(bookId) &&
+				(candidate.dataset.language === "es" ? "es" : "en") === language
+			);
+			if (card && Number.isInteger(data?.stock)) {
+				card.dataset.stock = String(data.stock);
+				refreshPaidCard(card, bookId, language);
+				if (data.stock === 0) removeFromCart(bookId, language);
+			}
 			throw new Error(data?.error || "No se pudo completar la compra.");
 		}
 
 		(Array.isArray(data?.compras) ? data.compras : []).forEach((purchase) => {
 			purchasedBooks.set(bookKey(purchase.id, purchase.idioma), purchase);
 		});
+		const boughtCard = bookCards.find((card) =>
+			card.dataset.bookId === String(bookId) &&
+			(card.dataset.language === "es" ? "es" : "en") === language
+		);
+		if (boughtCard) {
+			boughtCard.dataset.stock = Number.isInteger(data?.stock) ? String(data.stock) : "";
+		}
 
 		bookCards.forEach((card) => {
 			const id = card.dataset.bookId || card.querySelector("[data-reader-url]")?.dataset.readerUrl.match(/(\d+)\.html$/)?.[1];
@@ -960,13 +1005,14 @@ async function loadAdditionalCatalogBooks() {
 			id,
 			language,
 			price,
+			stock: Number.isInteger(book.stock) && book.stock >= 0 ? book.stock : null,
 			title: typeof book.titulo === "string" && book.titulo.trim() ? book.titulo.trim() : "Libro"
 		});
 	});
 
 	cartItems.forEach((item, key) => {
 		const purchasable = purchasableBooks.get(key);
-		if (!purchasable || ownsBook(item.id, item.language)) {
+		if (!purchasable || ownsBook(item.id, item.language) || purchasable.stock === 0) {
 			cartItems.delete(key);
 			return;
 		}
@@ -975,7 +1021,7 @@ async function loadAdditionalCatalogBooks() {
 	});
 
 	const existingBooks = new Set(bookCards.map((card) => {
-		const id = card.querySelector("[data-reader-url]")?.dataset.readerUrl.match(/(\d+)\.html$/)?.[1];
+		const id = card.dataset.bookId || card.querySelector("[data-reader-url]")?.dataset.readerUrl.match(/(\d+)\.html$/)?.[1];
 		return `${card.dataset.language || "en"}:${id}`;
 	}));
 	const genreLabels = {
@@ -1003,6 +1049,8 @@ async function loadAdditionalCatalogBooks() {
 		card.dataset.language = language;
 		card.dataset.bookId = String(book.id);
 		card.dataset.isbn = book.isbn || "";
+		card.dataset.stock = Number.isInteger(book.stock) && book.stock >= 0 ? String(book.stock) : "";
+		card.dataset.readable = book.lectura_disponible === false ? "0" : "1";
 
 		const cover = document.createElement("img");
 		cover.className = "book-cover";
@@ -1028,6 +1076,8 @@ async function loadAdditionalCatalogBooks() {
 
 		const priceAmount = purchasePrice(book);
 		const isPaid = priceAmount !== null;
+		card.dataset.shopBook = isPaid ? "1" : "0";
+		const targetGrid = isPaid ? shopGrid : catalog?.querySelector(".book-grid");
 		if (isPaid) {
 			const price = document.createElement("span");
 			price.className = "book-card__price";
@@ -1036,8 +1086,8 @@ async function loadAdditionalCatalogBooks() {
 		}
 
 		if (isPaid) {
-		card.dataset.requiresPurchase = "1";
-		if (book.presentacion) card.dataset.presentation = "1";
+			card.dataset.requiresPurchase = "1";
+			if (book.presentacion) card.dataset.presentation = "1";
 
 			const ownedBadge = document.createElement("span");
 			ownedBadge.className = "book-card__owned-badge";
@@ -1054,13 +1104,23 @@ async function loadAdditionalCatalogBooks() {
 			buyButton.dataset.bookPrice = String(priceAmount);
 			buyButton.textContent = "Agregar al carrito";
 			info.append(buyButton);
+
+			if (card.dataset.stock !== "") {
+				const stockLabel = document.createElement("span");
+				stockLabel.className = "book-card__stock";
+				stockLabel.textContent = Number(card.dataset.stock) > 0
+					? `Disponibles: ${card.dataset.stock}`
+					: "Sin stock";
+				if (Number(card.dataset.stock) <= 0) stockLabel.classList.add("book-card__stock--empty");
+				info.append(stockLabel);
+			}
 		}
 
-		if (!book.presentacion) {
+		if (!book.presentacion && book.lectura_disponible !== false) {
 			info.append(readButton);
 		}
 		card.append(cover, info);
-		catalog.querySelector(".book-grid")?.append(card);
+		targetGrid?.append(card);
 		bookCards.push(card);
 		existingBooks.add(key);
 
@@ -1073,18 +1133,23 @@ async function loadAdditionalCatalogBooks() {
 	persistCart();
 	renderCart();
 
-	const spanishBooks = books.filter((book) => book.idioma === "es").length;
+	const classicCount = bookCards.filter((card) => card.dataset.shopBook !== "1").length;
+	const spanishBooks = books.filter((book) => book.idioma === "es" && book.lectura_disponible !== false).length;
 	const introEyebrow = document.querySelector(".intro__eyebrow");
-	if (introEyebrow) introEyebrow.textContent = `${bookCards.length} clásicos · Texto íntegro · Inglés y español`;
+	if (introEyebrow) introEyebrow.textContent = `${classicCount} clásicos · Texto íntegro · Inglés y español`;
 	const introMeta = document.querySelector(".intro__meta");
-	if (introMeta) introMeta.textContent = `${bookCards.length} títulos · ${spanishBooks} libros íntegros en español · lectura en voz alta`;
+	if (introMeta) introMeta.textContent = `${classicCount} títulos · ${spanishBooks} libros íntegros en español · lectura en voz alta`;
 	await loadBookRatings();
 	filterBooks();
 }
 
 loadAdditionalCatalogBooks().catch((error) => {
 	console.error("loadAdditionalCatalogBooks error:", error);
-	if (bookResults) bookResults.textContent = "No se pudieron actualizar los libros agregados desde el panel de administración.";
+	if (shopResults) shopResults.textContent = "No se pudo cargar la tienda.";
+	if (shopEmptyMessage) {
+		shopEmptyMessage.textContent = "Intenta actualizar la página para volver a cargar los libros en venta.";
+		shopEmptyMessage.hidden = false;
+	}
 });
 
 const readerDialog = document.querySelector("#reader-modal");

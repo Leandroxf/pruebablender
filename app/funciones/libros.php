@@ -130,18 +130,21 @@ class Libro extends Modelo
                     'idioma' => $idioma,
                     'isbn' => $isbn,
                     'precio' => $precio,
+                    'stock' => isset($entrada['stock']) ? (int) $entrada['stock'] : null,
                     'source' => $source,
                     'presentacion' => false,
+                    'lectura_disponible' => !empty($entrada['secciones']),
                 );
             }
         }
 
-        $pagos = $this->filas('SELECT id, titulo, autor, genero, cover, isbn, precio, idioma, fuente FROM libros WHERE precio IS NOT NULL AND activo = 1 ORDER BY titulo');
+        $pagos = $this->filas('SELECT id, titulo, autor, genero, cover, isbn, precio, stock, secciones, idioma, fuente FROM libros WHERE precio IS NOT NULL AND activo = 1 ORDER BY titulo');
         foreach ($pagos as $pago) {
             $clavePago = $pago['idioma'] . ':' . (int) $pago['id'];
             if (isset($idsCatalogo[$clavePago])) {
                 continue;
             }
+            $secciones = json_decode((string) $pago['secciones'], true);
             $resumen[] = array(
                 'id' => (int) $pago['id'],
                 'titulo' => $pago['titulo'],
@@ -151,12 +154,69 @@ class Libro extends Modelo
                 'idioma' => $pago['idioma'],
                 'isbn' => (string) ($pago['isbn'] ?? ''),
                 'precio' => (float) $pago['precio'],
+                'stock' => $pago['stock'] === null ? null : (int) $pago['stock'],
                 'source' => (string) ($pago['fuente'] ?? ''),
                 'presentacion' => true,
+                'lectura_disponible' => is_array($secciones) && count($secciones) > 0,
             );
         }
 
         return $resumen;
+    }
+
+    /** Agrega un producto vendible sin cargar el texto completo. */
+    public function agregarProducto($datos)
+    {
+        $titulo = trim((string) ($datos['titulo'] ?? ''));
+        $autor = trim((string) ($datos['autor'] ?? ''));
+        $cover = trim((string) ($datos['cover'] ?? ''));
+        $precioTexto = trim((string) ($datos['precio'] ?? ''));
+        $stockTexto = trim((string) ($datos['stock'] ?? ''));
+
+        Respuesta::exigir($titulo !== '' && mb_strlen($titulo) <= 255, 'Ingresá un título de hasta 255 caracteres.');
+        Respuesta::exigir($autor !== '' && mb_strlen($autor) <= 255, 'Ingresá un autor de hasta 255 caracteres.');
+        Respuesta::exigir((bool) preg_match('#^fotos/[A-Za-z0-9._-]+\.(jpg|png|webp)$#i', $cover), 'Subí una foto de carátula válida.');
+        Respuesta::exigir(is_numeric($precioTexto), 'Ingresá un precio válido.');
+        $precio = (float) $precioTexto;
+        Respuesta::exigir(is_finite($precio) && $precio > 0 && $precio <= 99999999.99, 'El precio debe ser mayor a cero y no superar 99.999.999,99.');
+
+        $stock = filter_var($stockTexto, FILTER_VALIDATE_INT, array(
+            'options' => array('min_range' => 0, 'max_range' => 4294967295),
+        ));
+        Respuesta::exigir($stock !== false, 'El stock debe ser un número entero igual o mayor a cero.');
+
+        $idMaximo = 0;
+        foreach (Respuesta::idiomas() as $idioma) {
+            foreach ($this->cargar($idioma) as $clave => $entrada) {
+                $idMaximo = max($idMaximo, (int) $clave);
+            }
+        }
+        $ultimoId = $this->fila('SELECT COALESCE(MAX(id), 0) AS id FROM libros');
+        $id = max($idMaximo, (int) $ultimoId['id']) + 1;
+        Respuesta::exigir($id <= 4294967295, 'No se pudo asignar un ID al libro.');
+
+        $this->ejecutar(
+            "INSERT INTO libros (id, titulo, autor, genero, cover, precio, stock, secciones, idioma, fuente, introducciones)
+             VALUES (?, ?, ?, 'novela', ?, ?, ?, '[]', 'es', NULL, '{}')",
+            array($id, $titulo, $autor, $cover, $precio, $stock)
+        );
+
+        return $id;
+    }
+
+    /** Ajusta las existencias de un libro vendible. */
+    public function actualizarStock($id, $idioma, $stockTexto)
+    {
+        Respuesta::exigir(is_int($id) && $id > 0, 'El libro seleccionado no es válido.');
+        Respuesta::exigir($idioma === 'en' || $idioma === 'es', 'El libro seleccionado no es válido.');
+        $stock = filter_var((string) $stockTexto, FILTER_VALIDATE_INT, array(
+            'options' => array('min_range' => 0, 'max_range' => 4294967295),
+        ));
+        Respuesta::exigir($stock !== false, 'El stock debe ser un número entero igual o mayor a cero.');
+
+        $existe = $this->fila('SELECT 1 FROM libros WHERE id = ? AND idioma = ? AND precio IS NOT NULL AND activo = 1 LIMIT 1', array($id, $idioma));
+        Respuesta::exigir($existe !== null, 'No se encontró el libro vendible seleccionado.');
+        $this->ejecutar('UPDATE libros SET stock = ? WHERE id = ? AND idioma = ?', array($stock, $id, $idioma));
     }
 
     /**
@@ -273,12 +333,22 @@ class Libro extends Modelo
         Respuesta::exigir(is_int($id) && $id > 0, 'El libro seleccionado no es válido.');
 
         $catalogo = $this->cargar($idioma);
-        Respuesta::exigir(isset($catalogo[$id]), 'Ese libro no está en el catálogo.');
+        $existeEnCatalogo = isset($catalogo[$id]);
+        $filaBase = $this->fila('SELECT cover FROM libros WHERE id = ? AND idioma = ? LIMIT 1', array($id, $idioma));
+        Respuesta::exigir($existeEnCatalogo || $filaBase !== null, 'Ese libro no está en el catálogo.');
 
-        unset($catalogo[$id]);
-        $this->guardar($idioma, $catalogo);
-
+        if ($existeEnCatalogo) {
+            unset($catalogo[$id]);
+            $this->guardar($idioma, $catalogo);
+        }
         $this->ejecutar('DELETE FROM libros WHERE id = ? AND idioma = ?', array($id, $idioma));
+
+        if ($filaBase !== null && preg_match('#^fotos/libro-[a-f0-9]{32}\.(jpg|png|webp)$#i', (string) $filaBase['cover'])) {
+            $caratula = PROJECT_ROOT . '/' . str_replace('/', DIRECTORY_SEPARATOR, $filaBase['cover']);
+            if (is_file($caratula) && !unlink($caratula)) {
+                error_log('No se pudo eliminar la carátula del libro #' . $id . '.');
+            }
+        }
     }
 
     /** Los géneros que acepta el formulario del panel. */
@@ -302,7 +372,7 @@ class Libro extends Modelo
     /** Fila de la tabla libros: solo los libros de pago activos. */
     public function filaPago($id, $idioma)
     {
-        return $this->fila('SELECT id, titulo, autor, genero, cover, isbn, precio, secciones, idioma, fuente, introducciones
+        return $this->fila('SELECT id, titulo, autor, genero, cover, isbn, precio, stock, secciones, idioma, fuente, introducciones
              FROM libros
              WHERE id = ? AND idioma = ? AND precio IS NOT NULL AND activo = 1
              LIMIT 1', array($id, $idioma));
@@ -330,6 +400,8 @@ class Libro extends Modelo
             'idioma' => $fila['idioma'],
             'isbn' => $isbn,
             'precio' => (float) $fila['precio'],
+            'stock' => $fila['stock'] === null ? null : (int) $fila['stock'],
+            'lectura_disponible' => !empty(json_decode((string) $fila['secciones'], true)),
             'source' => $fuente,
             'es_texto_protegido' => true,
         );

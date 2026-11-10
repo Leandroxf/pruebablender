@@ -36,8 +36,8 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
     <meta name="user-logged-in" content="<?= $logueado ?>">
     <meta name="user-id" content="<?= $idUsuario ?>">
     <title>Audiolibrería de clásicos</title>
-    <link rel="stylesheet" href="style.css?v=login-feedback-1">
-    <script src="main.js?v=login-feedback-1" defer></script>
+    <link rel="stylesheet" href="style.css?v=shop-sections-1">
+    <script src="main.js?v=shop-sections-1" defer></script>
 </head>
 
 <body>
@@ -89,9 +89,10 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
             <div class="intro__content">
                 <p class="intro__eyebrow">31 clásicos · Texto íntegro · Inglés y español</p>
                 <h1 class="welcome-title">¡Bienvenido a nuestra audiolibrería!</h1>
-                <p class="intro__subtitle">Textos completos de clásicos en inglés y español. Leé, escuchá y valorá tus libros favoritos.</p>
+                <p class="intro__subtitle">Disfrutá clásicos gratuitos para leer y escuchar, o descubrí libros disponibles en la tienda.</p>
                 <div class="intro__actions">
                     <a href="#catalog-title" class="intro__cta">Explorar colección →</a>
+                    <a href="#shop-title" class="intro__cta intro__cta--secondary">Ver libros en venta →</a>
                     <span class="intro__meta">31 títulos · 12 libros íntegros en español · lectura en voz alta</span>
                 </div>
             </div>
@@ -104,17 +105,17 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
 
         <section class="catalog" aria-labelledby="catalog-title">
             <div class="catalog__heading">
-                <p class="catalog__eyebrow">Explora la colección</p>
-                <h2 id="catalog-title">Historias que te acompañan</h2>
-                <p>Clásicos inolvidables para escuchar, descubrir y volver a disfrutar. Valora tus favoritos con estrellas.</p>
+                <p class="catalog__eyebrow">Colección gratuita</p>
+                <h2 id="catalog-title">Libros gratis para leer y escuchar</h2>
+                <p>Explora clásicos completos en inglés y español, y valora tus favoritos con estrellas.</p>
             </div>
 
             <div class="catalog-layout">
                 <div class="catalog-content">
                     <div class="catalog-tools">
                         <label for="book-search">
-                            Buscar libros
-                            <input id="book-search" type="search" placeholder="Título, autor o género" aria-controls="book-grid">
+                            Buscar libros gratis o en venta
+                            <input id="book-search" type="search" placeholder="Título, autor o género" aria-controls="book-grid shop-grid">
                         </label>
                         <button class="button catalog-tools__barcode" id="barcode-open" type="button" data-modal-open="barcode-modal">Leer ISBN / Arduino COM3</button>
                     </div>
@@ -434,6 +435,19 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                         </div>
                     </div>
                 </aside>
+            </div>
+        </section>
+
+        <section class="catalog shop-section" id="shop" aria-labelledby="shop-title">
+            <div class="catalog__heading">
+                <p class="catalog__eyebrow">Tienda</p>
+                <h2 id="shop-title">Libros para comprar</h2>
+                <p>Explora los libros disponibles, consulta su precio y las unidades en stock.</p>
+            </div>
+            <div class="shop-content">
+                <p class="catalog-results" id="shop-results" aria-live="polite">Cargando libros en venta…</p>
+                <div class="book-grid" id="shop-grid"></div>
+                <p class="catalog-empty" id="shop-empty" hidden>No encontramos libros en venta que coincidan con la búsqueda y los filtros.</p>
             </div>
         </section>
     </main>

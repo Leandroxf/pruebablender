@@ -74,5 +74,10 @@ class BaseDatos
         foreach ($consultas as $sql) {
             self::$conexion->exec($sql);
         }
+
+        $columnaStock = self::$conexion->query("SHOW COLUMNS FROM libros LIKE 'stock'");
+        if ($columnaStock->fetch() === false) {
+            self::$conexion->exec('ALTER TABLE libros ADD stock INT UNSIGNED NULL DEFAULT NULL AFTER precio');
+        }
     }
 }
