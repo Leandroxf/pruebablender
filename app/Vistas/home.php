@@ -35,8 +35,8 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
     <meta name="user-logged-in" content="<?= $logueado ?>">
     <meta name="user-id" content="<?= $idUsuario ?>">
     <title>Audiolibrería de clásicos</title>
-    <link rel="stylesheet" href="style.css?v=shop-cart-login-fix">
-    <script src="main.js?v=shop-cart-login-fix" defer></script>
+    <link rel="stylesheet" href="style.css?v=<?= filemtime(__DIR__ . '/../../style.css') ?>">
+    <script src="main.js?v=<?= filemtime(__DIR__ . '/../../main.js') ?>" defer></script>
 </head>
 
 <body>
