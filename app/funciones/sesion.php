@@ -30,13 +30,12 @@ class Sesion
             if ($id !== null) {
                 try {
                     $usuario = new Usuario();
-                    $fila = $usuario->fila('SELECT rol FROM usuarios WHERE id_usuario = ? LIMIT 1', array($id));
-                    if ($fila !== null && self::rolEsAdmin($fila['rol'] ?? '')) {
+                    if ($usuario->esAdministrador($id)) {
                         $_SESSION['is_admin'] = true;
                         return true;
                     }
-                } catch (Exception $e) {
-                    // Ignorar si no hay conexión o tabla aún no lista
+                } catch (Throwable $e) {
+                    error_log('No se pudo verificar el rol de sesión: ' . $e->getMessage());
                 }
             }
         }

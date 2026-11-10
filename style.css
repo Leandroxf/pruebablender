@@ -3,12 +3,16 @@ body{
     margin: 0;
     background-color: rgb(166, 165, 165);
 }
+#inicio,
+#catalog-title{
+    scroll-margin-top: 5.5rem;
+}
 .header{
     box-sizing: border-box;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 0.65rem;
+    justify-content: space-between;
+    gap: 1.5rem;
     padding: 0.7rem clamp(1rem, 4vw, 3.5rem);
     background: rgb(250 249 245 / 96%);
     border-bottom: 1px solid #e4e1d8;
@@ -20,6 +24,262 @@ body{
     z-index: 50;
     backdrop-filter: blur(8px);
 }
+.header__brand{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: #1a2e2a;
+    text-decoration: none;
+    flex: 0 0 auto;
+}
+.header__brand-icon{
+    display: inline-grid;
+    place-items: center;
+    width: 2.7rem;
+    height: 2.7rem;
+    border-radius: 0.85rem;
+    color: #fff;
+    background: linear-gradient(145deg, #0f766e, #159486);
+    box-shadow: 0 5px 12px rgb(15 118 110 / 20%);
+}
+.header__brand-icon svg{
+    width: 1.55rem;
+    height: 1.55rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.6;
+}
+.header__brand-copy{
+    display: grid;
+    gap: 0.1rem;
+}
+.header__brand-copy strong{
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.08rem;
+    line-height: 1.1;
+}
+.header__brand-copy small{
+    color: #6b7a76;
+    font-size: 0.68rem;
+    line-height: 1.2;
+}
+.header__nav{
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: auto;
+}
+.header__nav a{
+    padding: 0.6rem 0.85rem;
+    border-radius: 999px;
+    color: #4b5a56;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: color 150ms ease, background 150ms ease;
+}
+.header__nav a:hover{
+    color: #0f766e;
+    background: #eaf3ef;
+}
+.header__nav a:focus-visible,
+.header__brand:focus-visible{
+    outline: 3px solid rgb(15 118 110 / 35%);
+    outline-offset: 3px;
+}
+.header__actions{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    flex: 0 0 auto;
+}
+.cart-button{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 2.65rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid #d7ded9;
+    border-radius: 999px;
+    color: #31534b;
+    background: #fff;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+.cart-button:hover{
+    transform: translateY(-1px);
+    border-color: #9bb9ae;
+    background: #f4f8f5;
+}
+.cart-button:focus-visible{
+    outline: 3px solid rgb(15 118 110 / 35%);
+    outline-offset: 3px;
+}
+.cart-button svg{
+    width: 1.2rem;
+    height: 1.2rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+.cart-button__count{
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.3rem;
+    height: 1.3rem;
+    padding: 0 0.2rem;
+    box-sizing: border-box;
+    border-radius: 999px;
+    color: #fff;
+    background: #0f766e;
+    font-size: 0.72rem;
+    line-height: 1;
+}
+.cart-modal{
+    box-sizing: border-box;
+    width: min(92vw, 38rem);
+    padding: 1.5rem;
+    border: 1px solid #d8e2dc;
+    border-radius: 1.25rem;
+    background: #fbfcfa;
+    box-shadow: 0 24px 70px rgb(20 40 34 / 28%);
+}
+.cart-modal__header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5ebe7;
+}
+.cart-modal__header form{margin: 0;flex: 0 0 auto;}
+.cart-modal__eyebrow{
+    margin: 0 0 0.25rem;
+    color: #0f766e;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+.cart-modal__header h2{
+    margin: 0;
+    color: #1a2e2a;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.55rem;
+}
+.cart-modal__hint{
+    margin: 1rem 0;
+    color: #5c6b65;
+}
+.cart-items{
+    display: grid;
+    gap: 0.65rem;
+    max-height: min(42vh, 22rem);
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    list-style: none;
+}
+.cart-item{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid #e0e8e3;
+    border-radius: 0.8rem;
+    background: #fff;
+}
+.cart-item__details{
+    display: grid;
+    gap: 0.3rem;
+    min-width: 0;
+}
+.cart-item__details strong{
+    color: #243932;
+    overflow-wrap: anywhere;
+}
+.cart-item__details span{
+    color: #68766f;
+    font-size: 0.85rem;
+}
+.cart-item__remove{
+    flex: 0 0 auto;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid #ead3ce;
+    border-radius: 999px;
+    color: #9a4438;
+    background: #fff;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.cart-item__remove:hover{
+    border-color: #c97a6e;
+    background: #fff5f2;
+}
+.cart-item__remove:focus-visible{
+    outline: 3px solid rgb(154 68 56 / 20%);
+    outline-offset: 2px;
+}
+.cart-empty{
+    margin: 1rem 0;
+    padding: 1.2rem;
+    border: 1px dashed #cbd8d0;
+    border-radius: 0.8rem;
+    color: #68766f;
+    text-align: center;
+}
+.cart-empty[hidden]{display:none;}
+.cart-modal__footer{
+    display: grid;
+    gap: 0.8rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5ebe7;
+}
+.cart-total{
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0;
+    color: #4b5a56;
+}
+.cart-total strong{
+    color: #1a2e2a;
+    font-size: 1.1rem;
+}
+.cart-checkout{
+    box-sizing: border-box;
+    width: 100%;
+    border: 0;
+    font: inherit;
+    cursor: pointer;
+}
+.cart-checkout:disabled{
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+.cart-status{
+    margin: 0.8rem 0 0;
+    color: #53645c;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+.cart-status[hidden]{display:none;}
 .header__logout{
     display: flex;
     margin: 0;
@@ -1096,6 +1356,40 @@ dialog.modal.profile-modal{
 .js .catalog.is-visible .book-card:nth-child(5){transition-delay: 280ms;}
 .js .catalog.is-visible .book-card:nth-child(6){transition-delay: 350ms;}
 @media (max-width: 760px){
+    .header{
+        gap: 0.6rem;
+        padding: 0.6rem 1rem;
+    }
+    .header__brand{
+        gap: 0.5rem;
+    }
+    .header__brand-icon{
+        width: 2.4rem;
+        height: 2.4rem;
+    }
+    .header__brand-copy small{
+        display: none;
+    }
+    .header__nav{
+        gap: 0;
+    }
+    .header__nav a{
+        padding: 0.55rem 0.6rem;
+        font-size: 0.85rem;
+    }
+    .header__actions{
+        gap: 0.4rem;
+    }
+    .header__actions .button{
+        min-height: 2.4rem;
+        padding: 0.55rem 0.7rem;
+        font-size: 0.8rem;
+    }
+    .header__actions .cart-button{
+        min-height: 2.4rem;
+        padding: 0.45rem 0.6rem;
+        font-size: 0.8rem;
+    }
     .intro{
         grid-template-columns: 1fr;
         gap: 1.5rem;
@@ -1199,11 +1493,49 @@ dialog.modal.profile-modal{
     }
 }
 @media (max-width: 420px){
+    #inicio,
+    #catalog-title{
+        scroll-margin-top: 7rem;
+    }
+    .header{
+        flex-wrap: wrap;
+    }
+    .header__brand-copy strong{
+        font-size: 0.92rem;
+    }
+    .header__brand{
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .header__actions .button{
+        min-height: 2.25rem;
+        padding: 0.45rem 0.55rem;
+        font-size: 0.75rem;
+    }
+    .cart-button__label{
+        display: none;
+    }
+    .header__nav{
+        order: 1;
+        width: 100%;
+        justify-content: center;
+        border-top: 1px solid #e4e1d8;
+        padding-top: 0.2rem;
+    }
+    .header__nav a{
+        flex: 1;
+        text-align: center;
+    }
     .book-grid{
         grid-template-columns: 1fr;
     }
     .book-cover{
         height: 17rem;
+    }
+}
+@media (max-width: 360px){
+    .header__brand-copy{
+        display: none;
     }
 }
 @media (prefers-reduced-motion: reduce){
@@ -1563,6 +1895,7 @@ dialog.modal.profile-modal{
     margin: 0;
     padding: 1.5rem 1.75rem 1.6rem;
 }
+.auth-login-error{margin: 0;}
 .auth-modal .auth-field{
     display: grid;
     gap: 0.4rem;

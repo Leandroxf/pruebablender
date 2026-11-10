@@ -94,6 +94,9 @@ class Admin
             Respuesta::redirigir('./');
         }
 
+        if (filter_input(INPUT_POST, 'login_origin') === 'home') {
+            Respuesta::redirigir('./?login=error');
+        }
         Respuesta::redirigir('admin.php?login=error');
     }
 

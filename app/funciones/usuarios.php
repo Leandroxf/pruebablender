@@ -45,12 +45,50 @@ class Usuario extends Modelo
     /** Crea una cuenta nueva y devuelve sus datos. */
     public function crear($nombre, $correo, $password, $rol = 'cliente')
     {
+        $nombre = trim((string) $nombre);
+        $correo = trim((string) $correo);
+        $rol = in_array($rol, array('cliente', 'vendedor', 'administrador'), true) ? $rol : 'cliente';
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        if ($hash === false) {
+            throw new RuntimeException('No se pudo proteger la contraseña.');
+        }
+
         $this->ejecutar(
             'INSERT INTO usuarios (nombre, correo, contrasenia, rol) VALUES (?, ?, ?, ?)',
-            array($nombre, $correo, password_hash($password, PASSWORD_DEFAULT), $rol)
+            array($nombre, $correo, $hash, $rol)
         );
 
         return array('id' => $this->ultimoId(), 'nombre' => $nombre, 'correo' => $correo, 'rol' => $rol);
+    }
+
+    /** Crea una cuenta, inicia su sesión y devuelve la respuesta JSON. */
+    public static function registrar($sesion, $nombre, $correo, $password)
+    {
+        try {
+            $usuario = (new Usuario())->crear($nombre, $correo, $password, 'cliente');
+            $sesion->entrarUsuario($usuario['id'], $usuario['nombre']);
+
+            Respuesta::json(array(
+                'usuario' => array('id' => $usuario['id'], 'nombre' => $usuario['nombre'], 'correo' => $usuario['correo']),
+                'mensaje' => 'Cuenta creada correctamente. Ya puedes iniciar sesión.',
+            ), 201);
+        } catch (PDOException $error) {
+            error_log('Error creando usuario: ' . $error->getMessage());
+            if ((string) $error->getCode() === '23000') {
+                Respuesta::json(array('error' => 'El correo o nombre ya está registrado.'), 409);
+            }
+            Respuesta::json(array('error' => 'No se pudo guardar la cuenta en la base de datos. Verifica la conexión e inténtalo nuevamente.'), 500);
+        } catch (Throwable $error) {
+            error_log('Error creando usuario: ' . $error->getMessage());
+            Respuesta::json(array('error' => 'No se pudo crear la cuenta. Inténtalo nuevamente.'), 500);
+        }
+    }
+
+    /** Comprueba el rol administrativo consultándolo dentro del modelo. */
+    public function esAdministrador($idUsuario)
+    {
+        $fila = $this->fila('SELECT rol FROM usuarios WHERE id_usuario = ? LIMIT 1', array((int) $idUsuario));
+        return $fila !== null && Sesion::rolEsAdmin($fila['rol'] ?? '');
     }
 
     /** Garantiza una cuenta interna para que el administrador pueda comprar libros. */

@@ -36,29 +36,56 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
     <meta name="user-logged-in" content="<?= $logueado ?>">
     <meta name="user-id" content="<?= $idUsuario ?>">
     <title>Audiolibrería de clásicos</title>
-    <link rel="stylesheet" href="style.css?v=spanish-classics-50">
-    <script src="main.js?v=spanish-classics-56" defer></script>
+    <link rel="stylesheet" href="style.css?v=login-feedback-1">
+    <script src="main.js?v=login-feedback-1" defer></script>
 </head>
 
 <body>
     <header class="header">
-        <?php if ($esAdminVista) { ?>
-            <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de <?= $nombreUsuario ?>" title="<?= $nombreUsuario ?>">
-                <span class="user-card__avatar user-card__avatar--reader" aria-hidden="true"><?= $inicialUsuario ?></span>
+        <a class="header__brand" href="#inicio" aria-label="Audiolibrería, ir al inicio">
+            <span class="header__brand-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M12 6.5C10.5 5 8.2 4.2 5 4.5v13c3.2-.3 5.5.5 7 2 1.5-1.5 3.8-2.3 7-2v-13c-3.2-.3-5.5.5-7 2Z" />
+                    <path d="M12 6.5v13" />
+                </svg>
+            </span>
+            <span class="header__brand-copy">
+                <strong>Audiolibrería</strong>
+                <small>Clásicos para leer y escuchar</small>
+            </span>
+        </a>
+        <nav class="header__nav" aria-label="Navegación principal">
+            <a href="#inicio">Inicio</a>
+            <a href="#catalog-title">Colección</a>
+        </nav>
+        <div class="header__actions">
+            <button class="cart-button" type="button" data-modal-open="cart-modal" aria-controls="cart-modal" aria-label="Abrir carrito">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 1.9-1.4L21 8H6" />
+                    <circle cx="10" cy="19" r="1" />
+                    <circle cx="18" cy="19" r="1" />
+                </svg>
+                <span class="cart-button__label">Carrito</span>
+                <span class="cart-button__count" id="cart-count" aria-hidden="true">0</span>
             </button>
-        <?php } ?>
-        <?php if (!$esAdminVista && $sesion->hayUsuario()) { ?>
-            <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de <?= $nombreUsuario ?>" title="<?= $nombreUsuario ?>">
-                <span class="user-card__avatar user-card__avatar--reader" aria-hidden="true"><?= $inicialUsuario ?></span>
-            </button>
-        <?php } ?>
-        <?php if (!$esAdminVista && !$sesion->hayUsuario()) { ?>
-            <button class="button" type="button" data-modal-open="login-modal">Iniciar sesión</button>
-            <button class="button" type="button" data-modal-open="register-modal">Crear cuenta</button>
-        <?php } ?>
+            <?php if ($esAdminVista) { ?>
+                <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de <?= $nombreUsuario ?>" title="<?= $nombreUsuario ?>">
+                    <span class="user-card__avatar user-card__avatar--reader" aria-hidden="true"><?= $inicialUsuario ?></span>
+                </button>
+            <?php } ?>
+            <?php if (!$esAdminVista && $sesion->hayUsuario()) { ?>
+                <button class="profile-icon" type="button" data-modal-open="profile-modal" aria-label="Abrir perfil de <?= $nombreUsuario ?>" title="<?= $nombreUsuario ?>">
+                    <span class="user-card__avatar user-card__avatar--reader" aria-hidden="true"><?= $inicialUsuario ?></span>
+                </button>
+            <?php } ?>
+            <?php if (!$esAdminVista && !$sesion->hayUsuario()) { ?>
+                <button class="button" type="button" data-modal-open="login-modal">Iniciar sesión</button>
+                <button class="button" type="button" data-modal-open="register-modal">Crear cuenta</button>
+            <?php } ?>
+        </div>
     </header>
     <main>
-        <section class="intro">
+        <section class="intro" id="inicio">
             <div class="intro__content">
                 <p class="intro__eyebrow">31 clásicos · Texto íntegro · Inglés y español</p>
                 <h1 class="welcome-title">¡Bienvenido a nuestra audiolibrería!</h1>
@@ -411,6 +438,26 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
         </section>
     </main>
 
+    <dialog class="modal cart-modal" id="cart-modal" aria-labelledby="cart-title">
+        <div class="cart-modal__header">
+            <div>
+                <p class="cart-modal__eyebrow">Tu selección</p>
+                <h2 id="cart-title">Carrito de compras</h2>
+            </div>
+            <form method="dialog">
+                <button class="modal__close" type="submit" aria-label="Cerrar carrito">&times;</button>
+            </form>
+        </div>
+        <p class="cart-modal__hint">Revisa tus libros antes de finalizar.</p>
+        <p class="cart-empty" id="cart-empty">Todavía no agregaste libros.</p>
+        <ul class="cart-items" id="cart-items" aria-live="polite"></ul>
+        <div class="cart-modal__footer">
+            <p class="cart-total"><span>Total</span><strong id="cart-total">$0</strong></p>
+            <button class="intro__cta cart-checkout" id="cart-checkout" type="button" disabled>Finalizar compra</button>
+        </div>
+        <p class="cart-status" id="cart-status" aria-live="polite" hidden></p>
+    </dialog>
+
     <dialog class="reader-modal" id="reader-modal" aria-labelledby="reader-title">
         <div class="reader__header">
             <div>
@@ -530,6 +577,10 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
         </div>
         <form class="auth-form" action="admin.php" method="post">
             <input type="hidden" name="action" value="login">
+            <input type="hidden" name="login_origin" value="home">
+            <?php if (filter_input(INPUT_GET, 'login') === 'error') { ?>
+                <p class="admin-message admin-message--error auth-login-error" role="alert">Usuario o contraseña incorrectos. Verifica los datos e inténtalo nuevamente.</p>
+            <?php } ?>
             <label class="auth-field" for="login-username">
                 <span>Usuario o mail</span>
                 <input id="login-username" name="username" type="text" autocomplete="username" placeholder="tu@correo.com" required>

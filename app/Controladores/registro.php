@@ -28,18 +28,4 @@ if ($largoPassword < 8 || $largoPassword > 72) {
     Respuesta::json(array('error' => 'La contraseña debe tener entre 8 y 72 caracteres.'), 422);
 }
 
-$cuenta = new Usuario();
-if ($cuenta->existeCorreo($correo)) {
-    Respuesta::json(array('error' => 'Ya existe una cuenta con ese correo electrónico. Probá iniciar sesión.'), 422);
-}
-if ($cuenta->existeNombre($nombre)) {
-    Respuesta::json(array('error' => 'Ya existe una cuenta con ese nombre de usuario. Elegí otro.'), 422);
-}
-
-$usuario = $cuenta->crear($nombre, $correo, $password);
-$sesion->entrarUsuario($usuario['id'], $usuario['nombre']);
-
-Respuesta::json(array(
-    'usuario' => array('id' => $usuario['id'], 'nombre' => $usuario['nombre'], 'correo' => $usuario['correo']),
-    'mensaje' => '¡Cuenta creada! Bienvenido, ' . $usuario['nombre'] . '.',
-), 201);
+Usuario::registrar($sesion, $nombre, $correo, $password);
