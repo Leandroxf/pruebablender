@@ -21,8 +21,8 @@ class Sesion
 
     public function esAdmin()
     {
-        if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
-            return true;
+        if (array_key_exists('is_admin', $_SESSION)) {
+            return $_SESSION['is_admin'] === true;
         }
 
         if ($this->hayUsuario()) {
@@ -30,8 +30,9 @@ class Sesion
             if ($id !== null) {
                 try {
                     $usuario = new Usuario();
-                    if ($usuario->esAdministrador($id)) {
-                        $_SESSION['is_admin'] = true;
+                    $esAdmin = $usuario->esAdministrador($id);
+                    $_SESSION['is_admin'] = $esAdmin;
+                    if ($esAdmin) {
                         return true;
                     }
                 } catch (Throwable $e) {
@@ -182,7 +183,11 @@ class Sesion
     /** Entra como lector con su cuenta. */
     public function entrarUsuario($id, $nombre)
     {
-        $this->reiniciar(array('user_id' => (int) $id, 'user_name' => (string) $nombre));
+        $this->reiniciar(array(
+            'user_id' => (int) $id,
+            'user_name' => (string) $nombre,
+            'is_admin' => false,
+        ));
     }
 
     /** Vacía la sesión anterior y deja solo los datos nuevos. */
