@@ -1092,7 +1092,7 @@ async function loadAdditionalCatalogBooks() {
 			const ownedBadge = document.createElement("span");
 			ownedBadge.className = "book-card__owned-badge";
 			ownedBadge.textContent = "Comprado";
-			ownedBadge.hidden = !isLoggedIn;
+			ownedBadge.hidden = true;
 			info.append(ownedBadge);
 
 			const buyButton = document.createElement("button");

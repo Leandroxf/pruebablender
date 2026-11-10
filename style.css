@@ -915,6 +915,7 @@ dialog.modal.profile-modal{
     font-size: 0.78rem;
     font-weight: 700;
 }
+.book-card__owned-badge[hidden]{display: none;}
 .book-card--owned .book-read{
     border-color: #b9c3bd;
     color: #0f766e;
