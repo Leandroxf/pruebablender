@@ -916,9 +916,9 @@ dialog.modal.profile-modal{
     font-weight: 700;
 }
 .book-card__owned-badge--not-owned{
-    border-color: #ead6a4;
-    color: #795b13;
-    background: #fff6dd;
+    border-color: #f0b4b4;
+    color: #9b1c1c;
+    background: #fff0f0;
 }
 .book-card__owned-badge[hidden]{display: none;}
 .book-card--owned .book-read{

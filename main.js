@@ -838,13 +838,9 @@ function refreshPaidCard(card, bookId, language) {
 		stockLabel.classList.toggle("book-card__stock--empty", stock <= 0);
 	}
 	if (badge) {
-		if (!userLoggedIn) {
-			badge.remove();
-		} else {
-			badge.textContent = owned ? "Comprado" : "No comprado";
-			badge.classList.toggle("book-card__owned-badge--not-owned", !owned);
-			badge.hidden = false;
-		}
+		badge.textContent = owned ? "Comprado" : "No comprado";
+		badge.classList.toggle("book-card__owned-badge--not-owned", !owned);
+		badge.hidden = false;
 	}
 	if (readButton && card.dataset.requiresPurchase === "1" && card.dataset.presentation !== "1") {
 		readButton.hidden = !owned;
