@@ -589,7 +589,8 @@ async function saveBookRating(card, rating) {
 }
 
 document.addEventListener("click", async (event) => {
-	const button = event.target.closest('[data-rating-action="rate"]');
+	const target = event.target instanceof Element ? event.target : null;
+	const button = target?.closest('[data-rating-action="rate"]');
 	if (button) {
 		const card = button.closest(".book-card");
 		if (!card) return;
@@ -598,6 +599,17 @@ document.addEventListener("click", async (event) => {
 		return;
 	}
 
+	const addButton = target?.closest('[data-purchase-action="add"]');
+	if (addButton && !addButton.disabled) {
+		const card = addButton.closest(".book-card");
+		if (!card) return;
+		addToCart({
+			id: Number(addButton.dataset.bookId),
+			language: addButton.dataset.bookLanguage,
+			price: Number(addButton.dataset.bookPrice),
+			title: card.querySelector("h3")?.textContent.trim() || "Libro"
+		});
+	}
 });
 
 loadBookRatings();
@@ -1103,15 +1115,6 @@ async function loadAdditionalCatalogBooks() {
 			buyButton.dataset.bookLanguage = language;
 			buyButton.dataset.bookPrice = String(priceAmount);
 			buyButton.textContent = "Agregar al carrito";
-			buyButton.addEventListener("click", () => {
-				if (buyButton.dataset.purchaseAction !== "add" || buyButton.disabled) return;
-				addToCart({
-					id: Number(buyButton.dataset.bookId),
-					language: buyButton.dataset.bookLanguage,
-					price: Number(buyButton.dataset.bookPrice),
-					title: title.textContent.trim() || "Libro"
-				});
-			});
 			info.append(buyButton);
 
 			if (card.dataset.stock !== "") {
