@@ -841,7 +841,9 @@ function refreshPaidCard(card, bookId, language) {
 		if (!userLoggedIn) {
 			badge.remove();
 		} else {
-			badge.hidden = !owned;
+			badge.textContent = owned ? "Comprado" : "No comprado";
+			badge.classList.toggle("book-card__owned-badge--not-owned", !owned);
+			badge.hidden = false;
 		}
 	}
 	if (readButton && card.dataset.requiresPurchase === "1" && card.dataset.presentation !== "1") {
