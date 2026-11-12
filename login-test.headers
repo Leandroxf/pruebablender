@@ -1,0 +1,13 @@
+HTTP/1.1 303 See Other
+Date: Mon, 09 Nov 2026 21:46:55 GMT
+Server: Apache/2.4.69 (Debian)
+X-Powered-By: PHP/8.2.35
+Expires: 0
+Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+Pragma: no-cache
+Set-Cookie: PHPSESSID=eb4813195c18febbe61f1e82f3b229ea; path=/
+Set-Cookie: recordarme=deleted; expires=Thu, 01 Jan 1970 00:00:01 GMT; Max-Age=0; path=/; HttpOnly; SameSite=Lax
+Location: ./
+Content-Length: 0
+Content-Type: text/html; charset=UTF-8
+

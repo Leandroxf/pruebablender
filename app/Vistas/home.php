@@ -122,7 +122,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
 
                     <div class="book-grid" id="book-grid">
                         <article class="book-card" data-genre="romance">
-                            <img class="book-cover" src="fotos/pride-and-prejudice.avif.png" alt="Portada de Pride and Prejudice" loading="lazy">
+                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141439518-L.jpg" alt="Portada de Pride and Prejudice" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Romance · Clásico</p>
                                 <h3>Pride and Prejudice</h3>
@@ -131,7 +131,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="ciencia-ficcion">
-                            <img class="book-cover" src="fotos/Frank.jpg" alt="Portada de Frankenstein" loading="lazy">
+                            <img class="book-cover" src="fotos/frankenstein.png" alt="Portada de Frankenstein" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Ciencia ficción · Clásico</p>
                                 <h3>Frankenstein</h3>
@@ -140,7 +140,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="terror">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141439846-L.jpg" alt="Portada de Dracula" loading="lazy">
+                            <img class="book-cover" src="fotos/dracula.png" alt="Portada de Dracula" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Terror · Clásico</p>
                                 <h3>Dracula</h3>
@@ -149,7 +149,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="fantasia">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141439761-L.jpg" alt="Portada de Alice's Adventures in Wonderland" loading="lazy">
+                            <img class="book-cover" src="fotos/alice-in-wonderland.png" alt="Portada de Alice's Adventures in Wonderland" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Fantasía · Clásico</p>
                                 <h3>Alice's Adventures in Wonderland</h3>
@@ -158,7 +158,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="aventura">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780142437247-L.jpg" alt="Portada de Moby-Dick" loading="lazy">
+                            <img class="book-cover" src="fotos/moby-dick.png" alt="Portada de Moby-Dick" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Aventura · Clásico</p>
                                 <h3>Moby-Dick</h3>
@@ -167,7 +167,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="novela">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780743273565-L.jpg" alt="Portada de The Great Gatsby" loading="lazy">
+                            <img class="book-cover" src="fotos/great-gatsby.png" alt="Portada de The Great Gatsby" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Novela · Clásico</p>
                                 <h3>The Great Gatsby</h3>
@@ -176,7 +176,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="romance">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141439587-L.jpg" alt="Portada de Emma" loading="lazy">
+                            <img class="book-cover" src="fotos/emma.png" alt="Portada de Emma" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Romance · Clásico</p>
                                 <h3>Emma</h3>
@@ -185,7 +185,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="ciencia-ficcion">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141441030-L.jpg" alt="Portada de The War of the Worlds" loading="lazy">
+                            <img class="book-cover" src="fotos/war-of-the-worlds.png" alt="Portada de The War of the Worlds" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Ciencia ficción · Clásico</p>
                                 <h3>The War of the Worlds</h3>
@@ -194,7 +194,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="terror">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141439730-L.jpg" alt="Portada de The Strange Case of Dr Jekyll and Mr Hyde" loading="lazy">
+                            <img class="book-cover" src="fotos/jekyll-hyde.png" alt="Portada de The Strange Case of Dr Jekyll and Mr Hyde" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Terror · Clásico</p>
                                 <h3>The Strange Case of Dr Jekyll and Mr Hyde</h3>
@@ -212,7 +212,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="aventura">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141321059-L.jpg" alt="Portada de The Call of the Wild" loading="lazy">
+                            <img class="book-cover" src="fotos/call-of-the-wild.png" alt="Portada de The Call of the Wild" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Aventura · Clásico</p>
                                 <h3>The Call of the Wild</h3>
@@ -221,7 +221,7 @@ if (!$esAdminVista && $sesion->hayUsuario()) {
                             </div>
                         </article>
                         <article class="book-card" data-genre="novela">
-                            <img class="book-cover" src="https://covers.openlibrary.org/b/isbn/9780141441146-L.jpg" alt="Portada de Jane Eyre" loading="lazy">
+                            <img class="book-cover" src="fotos/jane-eyre.png" alt="Portada de Jane Eyre" loading="lazy">
                             <div class="book-card__info">
                                 <p class="book-card__genre">Novela · Clásico</p>
                                 <h3>Jane Eyre</h3>

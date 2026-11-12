@@ -111,7 +111,6 @@ const shopResults = $("#shop-results");
 const shopEmptyMessage = $("#shop-empty");
 let selectedGenre = "all";
 let selectedLanguage = "all";
-let lastSearchSentToArduino = "";
 
 function normalizeText(value) {
 	return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -122,7 +121,6 @@ function filterBooks() {
 	const query = normalizeText(queryRaw);
 	let visibleClassicCount = 0;
 	let visibleShopCount = 0;
-	let firstMatchTitle = "";
 
 	bookCards.forEach((card) => {
 		const searchableText = [
@@ -131,7 +129,9 @@ function filterBooks() {
 			card.querySelector(".book-card__genre")?.textContent,
 			card.dataset.isbn || ""
 		].join(" ");
-		const matchesSearch = normalizeText(searchableText).includes(query);
+		const queryCode = normalizeBookCode(queryRaw);
+		const matchesSearch = normalizeText(searchableText).includes(query) ||
+			(queryCode.length >= 10 && normalizeBookCode(card.dataset.isbn) === queryCode);
 		const genres = (card.dataset.genres || card.dataset.genre || "")
 			.split(/[,\s]+/)
 			.map(normalizeText);
@@ -140,9 +140,6 @@ function filterBooks() {
 
 		const isVisible = matchesSearch && matchesGenre && matchesLanguage;
 		card.hidden = !isVisible;
-		if (isVisible && !firstMatchTitle) {
-			firstMatchTitle = card.querySelector("h3")?.textContent || "";
-		}
 		if (isVisible) {
 			if (card.dataset.shopBook === "1") visibleShopCount += 1;
 			else visibleClassicCount += 1;
@@ -158,14 +155,28 @@ function filterBooks() {
 	}
 	if (shopEmptyMessage) shopEmptyMessage.hidden = visibleShopCount > 0;
 
-	// Enviar al Arduino solo si hay resultado único o primer resultado y cambió la búsqueda
-	if (queryRaw && (visibleClassicCount + visibleShopCount) > 0 && firstMatchTitle) {
-		if (lastSearchSentToArduino !== queryRaw.toLowerCase()) {
-			lastSearchSentToArduino = queryRaw.toLowerCase();
-			sendBookToArduino(firstMatchTitle);
-		}
-	}
+
 }
+
+searchInput?.addEventListener("input", () => {
+	filterBooks();
+	const queryRaw = searchInput.value.trim();
+	const code = normalizeBookCode(queryRaw);
+	if (code.length >= 10) {
+    findBookTitleByCode(code).then((match) => {
+        if (searchInput.value.trim() !== queryRaw || !match) return;
+        const matchedCard = match.card || bookCards.find((card) => {
+            const readerUrl = card.querySelector("[data-reader-url]")?.dataset.readerUrl || "";
+            const cardId = card.dataset.bookId || readerUrl.match(/(\d+)\.html$/)?.[1] || "";
+            return cardId === String(match.id || "");
+        });
+        if (matchedCard) {
+            matchedCard.dataset.isbn = code;
+            filterBooks();
+        }
+    }).catch((error) => console.error("Error buscando ISBN en los catálogos:", error));
+	}
+});
 
 const barcodeSerialButton = $("#barcode-serial-button");
 const barcodeSerialStatus = $("#barcode-serial-status");
